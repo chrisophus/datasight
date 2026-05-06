@@ -1,56 +1,17 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
+import shutil
+from pathlib import Path
+
+import rich_click as click
+
+from datasight import cli
+from datasight.cli_helpers import _epilog
+from datasight.settings import (
+    Settings,
+    global_env_path,
+    load_global_env,
 )
-
-
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
-
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
 
 
 @click.group(
@@ -87,7 +48,7 @@ def config_init(overwrite: bool):
         click.echo("Use --overwrite to replace it.")
         return
 
-    template_path = Path(cli_root.__file__).parent / "templates" / "global_env.template"
+    template_path = Path(cli.__file__).parent / "templates" / "global_env.template"
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(template_path, dest)
 

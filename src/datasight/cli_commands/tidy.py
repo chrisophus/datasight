@@ -1,57 +1,18 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_tidy_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
 
+import rich_click as click
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
+from datasight.data_profile import find_table_info
 
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import _epilog
 
 
 def _project_scope_options(func):
@@ -74,7 +35,7 @@ def _project_scope_options(func):
 async def _gather_tidy_data(project_dir: str, source_table: str | None, settings):
     from datasight.tidy import _detect_period_groups, analyze_tidy_patterns
 
-    sql_runner, schema_info = await _load_schema_info_for_project(project_dir, settings)
+    sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
     try:
         if source_table:
             table_info = find_table_info(schema_info, source_table)
@@ -120,8 +81,8 @@ async def _gather_tidy_data_for_files(files: tuple[str, ...]):
 
 def _resolve_tidy_settings(project_dir: str) -> tuple[Any, str, str]:
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = _resolve_settings(project_dir)
-    resolved_db_path = _resolve_db_path(settings, project_dir)
+    settings, _ = cli._resolve_settings(project_dir)
+    resolved_db_path = cli._resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -251,16 +212,16 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
         tidy_data, _ = asyncio.run(_gather_tidy_data(project_dir, source_table, settings))
 
     if output_format == "json":
-        _write_or_print(json.dumps(tidy_data, indent=2), output_path)
+        cli._write_or_print(json.dumps(tidy_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        _write_or_print(_render_tidy_markdown(tidy_data), output_path)
+        cli._write_or_print(cli._render_tidy_markdown(tidy_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        _build_metric_table(
+        cli._build_metric_table(
             "Tidy Reshape Suggestions",
             [
                 ("Tables scanned", str(tidy_data["table_count"])),
@@ -271,7 +232,7 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
     suggestions = tidy_data.get("period_suggestions") or []
     if suggestions:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Suggestions",
                 [
                     ("Source", "left"),
@@ -297,7 +258,7 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
     wide_tables = tidy_data.get("wide_tables") or []
     if wide_tables:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Wide Tables",
                 [("Table", "left"), ("Columns", "right"), ("Rows", "right"), ("Reason", "left")],
                 [
@@ -314,7 +275,7 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
     if not suggestions and not wide_tables:
         console.print("[dim]No untidy column-shape patterns detected.[/dim]")
     if output_path:
-        _write_or_print(console.export_text(), output_path)
+        cli._write_or_print(console.export_text(), output_path)
 
 
 @click.command(

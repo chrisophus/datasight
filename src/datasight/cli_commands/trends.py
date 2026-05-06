@@ -1,56 +1,21 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
+import asyncio
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+import rich_click as click
+
+from datasight.data_profile import (
+    build_trend_overview,
+    find_table_info,
 )
 
-
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
-
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import _epilog
 
 
 @click.command(
@@ -102,7 +67,7 @@ def trends(files, project_dir, table, output_format, output_path):
             from datasight.explore import create_files_session_for_settings
             from datasight.schema import introspect_schema
 
-            db_settings = _current_db_settings_or_none()
+            db_settings = cli._current_db_settings_or_none()
             runner, _ = create_files_session_for_settings(list(files), db_settings)
             tables = await introspect_schema(runner.run_sql, runner=runner)
             schema_info = [
@@ -120,14 +85,16 @@ def trends(files, project_dir, table, output_format, output_path):
             measure_overrides: list[dict[str, Any]] = []
         else:
             resolved_dir = str(Path(project_dir or ".").resolve())
-            settings, _ = _resolve_settings(resolved_dir)
-            resolved_db_path = _resolve_db_path(settings, resolved_dir)
+            settings, _ = cli._resolve_settings(resolved_dir)
+            resolved_db_path = cli._resolve_db_path(settings, resolved_dir)
             if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(
                 resolved_db_path
             ):
                 click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
                 sys.exit(1)
-            sql_runner, schema_info = await _load_schema_info_for_project(resolved_dir, settings)
+            sql_runner, schema_info = await cli._load_schema_info_for_project(
+                resolved_dir, settings
+            )
             measure_overrides = load_measure_overrides(None, resolved_dir)
 
         if table:
@@ -140,23 +107,23 @@ def trends(files, project_dir, table, output_format, output_path):
     trend_data = asyncio.run(_run_trends())
 
     if output_format == "json":
-        _write_or_print(json.dumps(trend_data, indent=2), output_path)
+        cli._write_or_print(json.dumps(trend_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        _write_or_print(_render_trends_markdown(trend_data), output_path)
+        cli._write_or_print(cli._render_trends_markdown(trend_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        _build_metric_table(
+        cli._build_metric_table(
             "Trend Overview",
             [("Tables scanned", str(trend_data["table_count"]))],
         )
     )
     if trend_data["trend_candidates"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Trend Candidates",
                 [
                     ("Table", "left"),
@@ -179,14 +146,14 @@ def trends(files, project_dir, table, output_format, output_path):
         )
     if trend_data["breakout_dimensions"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Breakout Dimensions",
                 [("Column", "left"), ("Distinct", "right"), ("Null %", "right")],
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        _format_profile_value(item.get("distinct_count")),
-                        _format_profile_value(item.get("null_rate"), "0"),
+                        cli._format_profile_value(item.get("distinct_count")),
+                        cli._format_profile_value(item.get("null_rate"), "0"),
                     ]
                     for item in trend_data["breakout_dimensions"]
                 ],
@@ -194,7 +161,7 @@ def trends(files, project_dir, table, output_format, output_path):
         )
     if trend_data["chart_recommendations"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Chart Recommendations",
                 [("Title", "left"), ("Type", "left"), ("Reason", "left")],
                 [
@@ -205,9 +172,9 @@ def trends(files, project_dir, table, output_format, output_path):
         )
     if trend_data["notes"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Notes", [("Observation", "left")], [[item] for item in trend_data["notes"]]
             )
         )
     if output_path:
-        _write_or_print(console.export_text(), output_path)
+        cli._write_or_print(console.export_text(), output_path)

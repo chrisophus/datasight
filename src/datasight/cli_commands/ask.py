@@ -1,56 +1,14 @@
-# ruff: noqa: F401, F403, F405
-"""CLI command module."""
+"""``datasight ask`` — headless natural-language query."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+import os
+import sys
+from pathlib import Path
 
+import rich_click as click
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
-
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import _epilog
 
 
 @click.command(
@@ -179,15 +137,15 @@ def ask(
 
     # Logging
     level = "DEBUG" if verbose else "WARNING"
-    _configure_logging(level)
+    cli._configure_logging(level)
 
     # Load settings and validate
-    settings, resolved_model = _resolve_settings(project_dir, model)
-    _validate_settings_for_llm(settings)
+    settings, resolved_model = cli._resolve_settings(project_dir, model)
+    cli._validate_settings_for_llm(settings)
 
     click.echo(f"Using {settings.llm.provider} model: {resolved_model}", err=True)
 
-    resolved_db_path = _resolve_db_path(settings, project_dir)
+    resolved_db_path = cli._resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -195,7 +153,7 @@ def ask(
     sql_dialect = settings.database.sql_dialect
 
     if questions_file:
-        entries = _load_batch_entries(questions_file)
+        entries = cli._load_batch_entries(questions_file)
         if not entries:
             click.echo("Error: no questions found in file.", err=True)
             sys.exit(1)
@@ -209,7 +167,7 @@ def ask(
             click.echo("-" * 72)
             try:
                 result = asyncio.run(
-                    _run_ask_pipeline(
+                    cli._run_ask_pipeline(
                         question=batch_question,
                         settings=settings,
                         resolved_model=resolved_model,
@@ -218,11 +176,11 @@ def ask(
                     )
                 )
                 if not provenance:
-                    _emit_ask_result(result, batch_output_format, None, None)
+                    cli._emit_ask_result(result, batch_output_format, None, None)
                 if print_sql:
-                    _print_sql_queries(result)
+                    cli._print_sql_queries(result)
                 if provenance:
-                    _emit_cli_provenance(
+                    cli._emit_cli_provenance(
                         question=batch_question,
                         result=result,
                         model=resolved_model,
@@ -231,7 +189,7 @@ def ask(
                         provider=settings.llm.provider,
                     )
                 if output_dir or entry.get("output"):
-                    written = _write_batch_result_files(
+                    written = cli._write_batch_result_files(
                         output_dir=output_dir,
                         index=idx,
                         question=batch_question,
@@ -252,7 +210,7 @@ def ask(
         sys.exit(0 if failures == 0 else 1)
 
     result = asyncio.run(
-        _run_ask_pipeline(
+        cli._run_ask_pipeline(
             question=question,
             settings=settings,
             resolved_model=resolved_model,
@@ -261,11 +219,11 @@ def ask(
         )
     )
     if not provenance:
-        _emit_ask_result(result, output_format, chart_format, output_path)
+        cli._emit_ask_result(result, output_format, chart_format, output_path)
     if print_sql:
-        _print_sql_queries(result)
+        cli._print_sql_queries(result)
     if provenance:
-        _emit_cli_provenance(
+        cli._emit_cli_provenance(
             question=question,
             result=result,
             model=resolved_model,
@@ -274,11 +232,11 @@ def ask(
             provider=settings.llm.provider,
         )
     if sql_script_path:
-        script_text = _build_sql_script(result, question, sql_dialect)
+        script_text = cli._build_sql_script(result, question, sql_dialect)
         script_file = Path(sql_script_path)
         script_file.parent.mkdir(parents=True, exist_ok=True)
         script_file.write_text(script_text, encoding="utf-8")
-        # stderr (not stdout) — same reasoning as `_print_sql_queries`:
+        # stderr (not stdout) — same reasoning as ``_print_sql_queries``:
         # the confirmation is a diagnostic and must not corrupt
-        # machine-readable output on stdout (`--format json|csv`).
+        # machine-readable output on stdout (``--format json|csv``).
         click.echo(f"SQL script saved to {script_file}", err=True)

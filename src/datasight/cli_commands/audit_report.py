@@ -1,56 +1,23 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
+import asyncio
+import json
+import os
+import sys
+from pathlib import Path
+
+import rich_click as click
+
+from datasight.audit_report import (
+    build_audit_report,
+    render_audit_report_html,
+    render_audit_report_markdown,
 )
+from datasight.data_profile import find_table_info
+from datasight.validation import load_validation_config
 
-
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
-
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import _epilog
 
 
 @click.command(
@@ -95,10 +62,10 @@ def audit_report(project_dir, table, output_path, output_format):
     Combines profile, measures, quality, integrity, distribution, and
     validation results into one HTML, Markdown, or JSON artifact.
     """
-    _configure_logging("INFO")
+    cli._configure_logging("INFO")
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = _resolve_settings(project_dir)
-    resolved_db_path = _resolve_db_path(settings, project_dir)
+    settings, _ = cli._resolve_settings(project_dir)
+    resolved_db_path = cli._resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -122,7 +89,7 @@ def audit_report(project_dir, table, output_path, output_format):
     declared_joins = load_joins_config(None, project_dir) or None
 
     async def _run_audit_report():
-        sql_runner, schema_info = await _load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
@@ -142,8 +109,8 @@ def audit_report(project_dir, table, output_path, output_format):
     report_data = asyncio.run(_run_audit_report())
 
     if output_format == "json":
-        _write_or_print(json.dumps(report_data, indent=2), output_path)
+        cli._write_or_print(json.dumps(report_data, indent=2), output_path)
     elif output_format == "markdown":
-        _write_or_print(render_audit_report_markdown(report_data), output_path)
+        cli._write_or_print(render_audit_report_markdown(report_data), output_path)
     else:
-        _write_or_print(render_audit_report_html(report_data), output_path)
+        cli._write_or_print(render_audit_report_html(report_data), output_path)

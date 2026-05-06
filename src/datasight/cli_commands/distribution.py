@@ -1,56 +1,18 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+import json
+import os
+import sys
+from pathlib import Path
 
+import rich_click as click
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
+from datasight.data_profile import find_table_info
+from datasight.distribution import build_distribution_overview
 
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import _epilog
 
 
 @click.command(
@@ -105,8 +67,8 @@ def distribution(project_dir, table, column, output_format, output_path):
         click.echo("Error: use either --table or --column, not both.", err=True)
         sys.exit(1)
 
-    settings, _ = _resolve_settings(project_dir)
-    resolved_db_path = _resolve_db_path(settings, project_dir)
+    settings, _ = cli._resolve_settings(project_dir)
+    resolved_db_path = cli._resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -116,7 +78,7 @@ def distribution(project_dir, table, column, output_format, output_path):
     measure_overrides = load_measure_overrides(None, project_dir)
 
     async def _run_distribution():
-        sql_runner, schema_info = await _load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
@@ -131,23 +93,23 @@ def distribution(project_dir, table, column, output_format, output_path):
     dist_data = asyncio.run(_run_distribution())
 
     if output_format == "json":
-        _write_or_print(json.dumps(dist_data, indent=2), output_path)
+        cli._write_or_print(json.dumps(dist_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        _write_or_print(_render_distribution_markdown(dist_data), output_path)
+        cli._write_or_print(cli._render_distribution_markdown(dist_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        _build_metric_table(
+        cli._build_metric_table(
             "Distribution Profiling",
             [("Tables scanned", str(dist_data["table_count"]))],
         )
     )
     if dist_data["distributions"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Distributions",
                 [
                     ("Column", "left"),
@@ -161,11 +123,11 @@ def distribution(project_dir, table, column, output_format, output_path):
                 [
                     [
                         f"{d['table']}.{d['column']}",
-                        _fmt_dist(d.get("p5")),
-                        _fmt_dist(d.get("p50")),
-                        _fmt_dist(d.get("p95")),
-                        _fmt_dist(d.get("zero_rate")),
-                        _fmt_dist(d.get("negative_rate")),
+                        cli._fmt_dist(d.get("p5")),
+                        cli._fmt_dist(d.get("p50")),
+                        cli._fmt_dist(d.get("p95")),
+                        cli._fmt_dist(d.get("zero_rate")),
+                        cli._fmt_dist(d.get("negative_rate")),
                         str(d.get("outlier_count", 0)),
                     ]
                     for d in dist_data["distributions"]
@@ -174,7 +136,7 @@ def distribution(project_dir, table, column, output_format, output_path):
         )
     if dist_data["energy_flags"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Energy Flags",
                 [("Column", "left"), ("Flag", "left"), ("Detail", "left")],
                 [
@@ -185,7 +147,7 @@ def distribution(project_dir, table, column, output_format, output_path):
         )
     if dist_data["spikes"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Temporal Spikes",
                 [("Column", "left"), ("Period", "left"), ("Z-score", "right"), ("Detail", "left")],
                 [
@@ -201,11 +163,11 @@ def distribution(project_dir, table, column, output_format, output_path):
         )
     if dist_data["notes"]:
         console.print(
-            _build_profile_detail_table(
+            cli._build_profile_detail_table(
                 "Notes",
                 [("Observation", "left")],
                 [[item] for item in dist_data["notes"]],
             )
         )
     if output_path:
-        _write_or_print(console.export_text(), output_path)
+        cli._write_or_print(console.export_text(), output_path)

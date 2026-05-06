@@ -3,7 +3,6 @@
 import asyncio
 import json
 import os
-import shutil
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -15,11 +14,6 @@ import yaml
 from loguru import logger
 
 from datasight import __version__
-
-# Helpers used by both this module and the subcommand modules live in
-# datasight.cli_helpers so that subcommand modules can import them
-# without forming an import cycle with this file. Re-exported here for
-# back-compat with ``from datasight.cli import _epilog`` callers.
 from datasight.cli_helpers import (
     _epilog as _epilog,
     _resolve_db_path as _resolve_db_path,
@@ -27,71 +21,13 @@ from datasight.cli_helpers import (
 )
 from datasight.config import create_sql_runner_from_settings
 from datasight.data_profile import (
-    build_column_profile,
-    build_dataset_overview,
-    build_dimension_overview,
     build_measure_overview,
     build_prompt_recipes,
-    build_quality_overview,
-    build_table_profile,
-    build_trend_overview,
-    find_column_info,
     find_table_info,
-    format_measure_overrides_yaml,
     format_measure_prompt_context,
 )
-from datasight.audit_report import (
-    build_audit_report,
-    render_audit_report_html,
-    render_audit_report_markdown,
-)
-from datasight.distribution import build_distribution_overview
-from datasight.integrity import build_integrity_overview
 from datasight.llm import create_llm_client
-from datasight.settings import Settings, global_env_path, load_global_env
-from datasight.validation import build_validation_report, load_validation_config
-
-_SHARED_EXPORTS = (
-    asyncio,
-    json,
-    os,
-    shutil,
-    sys,
-    uuid,
-    datetime,
-    timezone,
-    Path,
-    Any,
-    Literal,
-    click,
-    yaml,
-    logger,
-    __version__,
-    create_sql_runner_from_settings,
-    build_column_profile,
-    build_dataset_overview,
-    build_dimension_overview,
-    build_measure_overview,
-    build_prompt_recipes,
-    build_quality_overview,
-    build_table_profile,
-    build_trend_overview,
-    find_column_info,
-    find_table_info,
-    format_measure_overrides_yaml,
-    format_measure_prompt_context,
-    build_audit_report,
-    render_audit_report_html,
-    render_audit_report_markdown,
-    build_distribution_overview,
-    build_integrity_overview,
-    create_llm_client,
-    Settings,
-    global_env_path,
-    load_global_env,
-    build_validation_report,
-    load_validation_config,
-)
+from datasight.settings import Settings, load_global_env
 
 
 # One-line log format that shows the module name but not the function or

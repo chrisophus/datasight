@@ -1,56 +1,14 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+import json
+from pathlib import Path
+
+import rich_click as click
 
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
-
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import _epilog
 
 
 @click.group(
@@ -112,20 +70,20 @@ def recipes_list(project_dir, table, output_format, output_path):
     from rich.console import Console
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = _resolve_settings(project_dir)
-    recipe_data = _load_recipe_entries(project_dir, settings, table)
+    settings, _ = cli._resolve_settings(project_dir)
+    recipe_data = cli._load_recipe_entries(project_dir, settings, table)
 
     if output_format == "json":
-        _write_or_print(json.dumps(recipe_data, indent=2), output_path)
+        cli._write_or_print(json.dumps(recipe_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        _write_or_print(_render_recipes_markdown(recipe_data), output_path)
+        cli._write_or_print(cli._render_recipes_markdown(recipe_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        _build_profile_detail_table(
+        cli._build_profile_detail_table(
             "Prompt Recipes",
             [
                 ("ID", "right"),
@@ -147,7 +105,7 @@ def recipes_list(project_dir, table, output_format, output_path):
         )
     )
     if output_path:
-        _write_or_print(console.export_text(), output_path)
+        cli._write_or_print(console.export_text(), output_path)
 
 
 @click.command(
@@ -200,18 +158,17 @@ def recipes_run(
 
     RECIPE_ID is the numeric ID shown by datasight recipes list.
     """
-    import asyncio
 
     from rich.console import Console
 
     project_dir = str(Path(project_dir).resolve())
-    settings, resolved_model = _resolve_settings(project_dir, model)
-    _validate_settings_for_llm(settings)
+    settings, resolved_model = cli._resolve_settings(project_dir, model)
+    cli._validate_settings_for_llm(settings)
 
     if verbose:
-        _configure_logging("DEBUG")
+        cli._configure_logging("DEBUG")
 
-    recipe_data = _load_recipe_entries(project_dir, settings, table)
+    recipe_data = cli._load_recipe_entries(project_dir, settings, table)
     recipe = next((item for item in recipe_data if item["id"] == recipe_id), None)
     if recipe is None:
         click.echo(f"Recipe {recipe_id} not found.", err=True)
@@ -222,7 +179,7 @@ def recipes_run(
     console.print(f"[dim]Running recipe [{recipe['id']}]: {recipe['title']}[/dim]")
 
     result = asyncio.run(
-        _run_ask_pipeline(
+        cli._run_ask_pipeline(
             question=recipe["prompt"],
             settings=settings,
             resolved_model=resolved_model,
@@ -230,7 +187,7 @@ def recipes_run(
             sql_dialect=sql_dialect,
         )
     )
-    _emit_ask_result(result, output_format, chart_format, output_path)
+    cli._emit_ask_result(result, output_format, chart_format, output_path)
 
 
 recipes.add_command(recipes_list)
