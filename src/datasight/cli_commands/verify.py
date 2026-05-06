@@ -1,60 +1,20 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+import os
+import sys
+from pathlib import Path
 
+import rich_click as click
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
+from datasight.config import create_sql_runner_from_settings
 
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -98,13 +58,12 @@ def verify(project_dir, model, queries_path, verbose):
     executes the generated SQL, and compares results against expected values.
     Use this to validate correctness across different models and providers.
     """
-    import asyncio
 
     project_dir = str(Path(project_dir).resolve())
 
     # Logging
     level = "DEBUG" if verbose else "WARNING"
-    _configure_logging(level)
+    cli.configure_logging(level)
 
     # Load queries
     from datasight.config import load_example_queries
@@ -115,10 +74,10 @@ def verify(project_dir, model, queries_path, verbose):
         sys.exit(1)
 
     # Load settings and validate
-    settings, resolved_model = _resolve_settings(project_dir, model)
-    _validate_settings_for_llm(settings)
+    settings, resolved_model = cli.resolve_settings(project_dir, model)
+    cli.validate_settings_for_llm(settings)
 
-    resolved_db_path = _resolve_db_path(settings, project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -138,7 +97,7 @@ def verify(project_dir, model, queries_path, verbose):
         from datasight.schema_links import resolve_schema_description_links
         from datasight.verify import run_ambiguity_analysis, run_verification
 
-        llm_client = create_llm_client(
+        llm_client = cli.create_llm_client(
             provider=settings.llm.provider,
             api_key=settings.llm.api_key,
             base_url=settings.llm.base_url,

@@ -1,57 +1,13 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+import json
+from pathlib import Path
+from typing import Any
 
+import rich_click as click
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
-
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
-
+from datasight.cli_helpers import format_epilog
 
 _PROJECT_DIR_OPT = click.option(
     "--project-dir",
@@ -63,7 +19,7 @@ _PROJECT_DIR_OPT = click.option(
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -128,7 +84,7 @@ def _resolve_project_duckdb(project_dir: str) -> Path | None:
 
 @click.command(
     name="save",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -240,7 +196,7 @@ def template_save(
 
 @click.command(
     name="list",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -283,7 +239,7 @@ def template_list(project_dir: str):
 
 @click.command(
     name="show",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -306,7 +262,7 @@ def template_show(name: str, project_dir: str):
 
 @click.command(
     name="apply",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -381,7 +337,6 @@ def template_apply(
     glob, in which case the template is applied once per matching file and
     written to --export-dir.
     """
-    import asyncio
     import glob
 
     from datasight.dashboard_template import (
@@ -595,7 +550,7 @@ def template_apply(
 
 @click.command(
     name="delete",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 

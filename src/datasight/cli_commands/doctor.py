@@ -1,60 +1,21 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+import json
+import os
+import sys
+from pathlib import Path
 
+import rich_click as click
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
+from datasight.config import create_sql_runner_from_settings
 
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -104,7 +65,7 @@ def doctor(project_dir, output_format, output_path):
     env_path = project_path / ".env"
     add_check(".env", env_path.exists(), str(env_path))
 
-    settings = _resolve_settings(str(project_path))[0]
+    settings = cli.resolve_settings(str(project_path))[0]
     validation_errors = settings.validate()
     add_check(
         "LLM settings",
@@ -114,7 +75,7 @@ def doctor(project_dir, output_format, output_path):
 
     db_detail = settings.database.mode
     db_ok = True
-    resolved_db_path = _resolve_db_path(settings, str(project_path))
+    resolved_db_path = cli.resolve_db_path(settings, str(project_path))
     if settings.database.mode in ("duckdb", "sqlite"):
         db_ok = bool(resolved_db_path) and os.path.exists(resolved_db_path)
         db_detail = resolved_db_path
@@ -166,7 +127,7 @@ def doctor(project_dir, output_format, output_path):
     failures = sum(1 for check in rendered_checks if not check["ok"])
 
     if output_format == "json":
-        _write_or_print(
+        cli.write_or_print(
             json.dumps(
                 {
                     "project_dir": str(project_path),
@@ -182,8 +143,8 @@ def doctor(project_dir, output_format, output_path):
         return
 
     if output_format == "markdown":
-        _write_or_print(
-            _render_doctor_markdown(str(project_path), rendered_checks),
+        cli.write_or_print(
+            cli.render_doctor_markdown(str(project_path), rendered_checks),
             output_path,
         )
         if failures:
@@ -204,6 +165,6 @@ def doctor(project_dir, output_format, output_path):
 
     console.print(table)
     if output_path:
-        _write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)
     if failures:
         sys.exit(1)

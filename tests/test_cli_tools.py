@@ -996,7 +996,7 @@ def test_recipes_run_executes_selected_prompt(monkeypatch, project_dir):
         captured["question"] = kwargs["question"]
         return SimpleNamespace(text="recipe answer", tool_results=[])
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(cli, ["recipes", "run", "1", "--project-dir", project_dir])
@@ -1024,7 +1024,7 @@ def test_ask_file_runs_all_questions(monkeypatch, project_dir, tmp_path):
             tool_results=[],
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1066,7 +1066,7 @@ def test_ask_file_output_dir_writes_artifacts(monkeypatch, project_dir, tmp_path
             ],
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1135,7 +1135,7 @@ def test_ask_yaml_file_applies_per_entry_overrides(monkeypatch, project_dir, tmp
             ],
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1196,7 +1196,7 @@ def test_ask_yaml_file_supports_output_base_override(monkeypatch, project_dir, t
             ],
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1253,7 +1253,7 @@ def test_ask_jsonl_file_supports_output_without_output_dir(monkeypatch, project_
             tool_results=[SimpleNamespace(df=FakeFrame(), plotly_spec=None, meta={})],
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1469,13 +1469,13 @@ def _make_sql_result(text="answer", queries=None):
 
 
 def test_sanitize_sql_identifier_basic():
-    from datasight.cli import _sanitize_sql_identifier
+    from datasight.cli import sanitize_sql_identifier
 
-    assert _sanitize_sql_identifier("Top 5 states by generation") == "top_5_states_by_generation"
-    assert _sanitize_sql_identifier("  ??  ") == "query"
-    assert _sanitize_sql_identifier("123 widgets") == "q_123_widgets"
+    assert sanitize_sql_identifier("Top 5 states by generation") == "top_5_states_by_generation"
+    assert sanitize_sql_identifier("  ??  ") == "query"
+    assert sanitize_sql_identifier("123 widgets") == "q_123_widgets"
     # Long input is capped at the 32-char slug limit
-    assert len(_sanitize_sql_identifier("a" * 200)) <= 32
+    assert len(sanitize_sql_identifier("a" * 200)) <= 32
 
 
 def test_sanitize_sql_identifier_strips_non_ascii():
@@ -1483,25 +1483,25 @@ def test_sanitize_sql_identifier_strips_non_ascii():
     identifiers and truncates at 63 *bytes*, so multi-byte UTF-8 chars
     can blow that budget on a per-character truncation scheme.
     """
-    from datasight.cli import _question_table_prefix, _sanitize_sql_identifier
+    from datasight.cli import question_table_prefix, sanitize_sql_identifier
 
     # Japanese, French, accents, emoji — all stripped to underscores then collapsed.
-    assert _sanitize_sql_identifier("日本語の質問") == "query"
-    assert _sanitize_sql_identifier("café revenue") == "caf_revenue"
-    assert _sanitize_sql_identifier("naïve résumé") == "na_ve_r_sum"
+    assert sanitize_sql_identifier("日本語の質問") == "query"
+    assert sanitize_sql_identifier("café revenue") == "caf_revenue"
+    assert sanitize_sql_identifier("naïve résumé") == "na_ve_r_sum"
     # Mixed: ASCII parts survive, non-ASCII parts are dropped.
-    assert _sanitize_sql_identifier("top 5 日本") == "top_5"
+    assert sanitize_sql_identifier("top 5 日本") == "top_5"
     # The full table prefix (slug + hash) for a worst-case 200-byte
     # multi-byte question must still fit within Postgres' 63-byte limit
     # even after a `_<n>` suffix is appended.
     huge = "日" * 200
-    prefix = _question_table_prefix(huge)
+    prefix = question_table_prefix(huge)
     assert len(f"{prefix}_999".encode("utf-8")) <= 63
 
 
 def test_question_table_prefix_distinguishes_long_questions():
     """Two long questions sharing the same first sanitized chars must not collide."""
-    from datasight.cli import _question_table_prefix, _sanitize_sql_identifier
+    from datasight.cli import question_table_prefix, sanitize_sql_identifier
 
     q1 = (
         "What are the top 10 products by revenue in the western region for "
@@ -1512,15 +1512,15 @@ def test_question_table_prefix_distinguishes_long_questions():
         "the entire calendar year of 2024"
     )
     # Sanity-check the precondition: the bare slugs DO collide.
-    assert _sanitize_sql_identifier(q1) == _sanitize_sql_identifier(q2)
+    assert sanitize_sql_identifier(q1) == sanitize_sql_identifier(q2)
     # The full prefix must NOT collide, thanks to the hash suffix.
-    assert _question_table_prefix(q1) != _question_table_prefix(q2)
+    assert question_table_prefix(q1) != question_table_prefix(q2)
     # And the prefix must be deterministic for the same question.
-    assert _question_table_prefix(q1) == _question_table_prefix(q1)
+    assert question_table_prefix(q1) == question_table_prefix(q1)
 
 
 def test_build_sql_script_duckdb_create_or_replace():
-    from datasight.cli import _build_sql_script, _question_table_prefix
+    from datasight.cli import build_sql_script, question_table_prefix
 
     result = _make_sql_result(
         queries=[
@@ -1528,8 +1528,8 @@ def test_build_sql_script_duckdb_create_or_replace():
             {"sql": "SELECT 2 AS y", "formatted_sql": "SELECT 2 AS y"},
         ]
     )
-    prefix = _question_table_prefix("Top widgets")
-    script = _build_sql_script(result, "Top widgets", "duckdb")
+    prefix = question_table_prefix("Top widgets")
+    script = build_sql_script(result, "Top widgets", "duckdb")
     assert "-- Question: Top widgets" in script
     assert "-- Dialect: duckdb" in script
     assert f"CREATE OR REPLACE TABLE {prefix}_1 AS" in script
@@ -1540,18 +1540,18 @@ def test_build_sql_script_duckdb_create_or_replace():
 
 
 def test_build_sql_script_postgres_uses_drop_then_create():
-    from datasight.cli import _build_sql_script, _question_table_prefix
+    from datasight.cli import build_sql_script, question_table_prefix
 
     result = _make_sql_result(queries=[{"sql": "SELECT * FROM t"}])
-    prefix = _question_table_prefix("list rows")
-    script = _build_sql_script(result, "list rows", "postgres")
+    prefix = question_table_prefix("list rows")
+    script = build_sql_script(result, "list rows", "postgres")
     assert f"DROP TABLE IF EXISTS {prefix}_1;" in script
     assert f"CREATE TABLE {prefix}_1 AS" in script
     assert "CREATE OR REPLACE TABLE" not in script
 
 
 def test_build_sql_script_skips_errored_queries():
-    from datasight.cli import _build_sql_script, _question_table_prefix
+    from datasight.cli import build_sql_script, question_table_prefix
 
     result = _make_sql_result(
         queries=[
@@ -1559,8 +1559,8 @@ def test_build_sql_script_skips_errored_queries():
             {"sql": "SELECT 2"},
         ]
     )
-    prefix = _question_table_prefix("q")
-    script = _build_sql_script(result, "q", "duckdb")
+    prefix = question_table_prefix("q")
+    script = build_sql_script(result, "q", "duckdb")
     assert "-- Skipped attempt (errored, not materialized):" in script
     assert "--   error: boom" in script
     # Failed attempts must NOT consume a table-name index — the lone
@@ -1575,7 +1575,7 @@ def test_build_sql_script_table_names_stable_across_retries():
     question against a different agent attempt sequence leaves stale
     tables behind.
     """
-    from datasight.cli import _build_sql_script, _question_table_prefix
+    from datasight.cli import build_sql_script, question_table_prefix
 
     # Run A: agent succeeds on the first try.
     result_a = _make_sql_result(queries=[{"sql": "SELECT final"}])
@@ -1587,9 +1587,9 @@ def test_build_sql_script_table_names_stable_across_retries():
             {"sql": "SELECT final"},
         ]
     )
-    prefix = _question_table_prefix("same q")
-    script_a = _build_sql_script(result_a, "same q", "duckdb")
-    script_b = _build_sql_script(result_b, "same q", "duckdb")
+    prefix = question_table_prefix("same q")
+    script_a = build_sql_script(result_a, "same q", "duckdb")
+    script_b = build_sql_script(result_b, "same q", "duckdb")
     # Both runs must materialize the final result on _1.
     assert f"CREATE OR REPLACE TABLE {prefix}_1 AS" in script_a
     assert f"CREATE OR REPLACE TABLE {prefix}_1 AS" in script_b
@@ -1599,18 +1599,18 @@ def test_build_sql_script_table_names_stable_across_retries():
 
 
 def test_build_sql_script_no_queries():
-    from datasight.cli import _build_sql_script
+    from datasight.cli import build_sql_script
 
-    script = _build_sql_script(_make_sql_result(), "anything", "duckdb")
+    script = build_sql_script(_make_sql_result(), "anything", "duckdb")
     assert "(no SQL queries were executed)" in script
 
 
 def test_build_sql_script_escapes_newlines_in_question():
     """A newline in the question must not escape the header comment."""
-    from datasight.cli import _build_sql_script
+    from datasight.cli import build_sql_script
 
     result = _make_sql_result(queries=[{"sql": "SELECT 1"}])
-    script = _build_sql_script(result, "top rows\nDROP TABLE important;", "duckdb")
+    script = build_sql_script(result, "top rows\nDROP TABLE important;", "duckdb")
     # Every non-empty line above the generated DDL must be a SQL comment —
     # in particular, the malicious second line must still be commented.
     for line in script.splitlines():
@@ -1624,12 +1624,12 @@ def test_build_sql_script_escapes_newlines_in_question():
 
 def test_build_sql_script_escapes_newlines_in_error():
     """Multi-line SQL error messages must stay commented in the script."""
-    from datasight.cli import _build_sql_script
+    from datasight.cli import build_sql_script
 
     result = _make_sql_result(
         queries=[{"sql": "SELECT 1", "error": "bad thing\nDROP TABLE users;"}]
     )
-    script = _build_sql_script(result, "q", "duckdb")
+    script = build_sql_script(result, "q", "duckdb")
     for line in script.splitlines():
         stripped = line.strip()
         assert not stripped or stripped.startswith("--"), f"leaked line: {line!r}"
@@ -1643,7 +1643,7 @@ def test_ask_print_sql_outputs_queries_to_stderr(monkeypatch, project_dir):
             queries=[{"sql": "SELECT count(*) FROM orders"}],
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1670,7 +1670,7 @@ def test_ask_provenance_outputs_json_to_stdout(monkeypatch, project_dir):
             ],
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1729,7 +1729,7 @@ def test_ask_print_sql_keeps_json_stdout_parseable(monkeypatch, project_dir):
             api_calls=0,
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -1753,7 +1753,7 @@ def test_ask_print_sql_keeps_json_stdout_parseable(monkeypatch, project_dir):
 
 
 def test_ask_sql_script_writes_file(monkeypatch, project_dir, tmp_path):
-    from datasight.cli import _question_table_prefix
+    from datasight.cli import question_table_prefix
 
     async def fake_run_ask_pipeline(**kwargs):
         return _make_sql_result(
@@ -1763,7 +1763,7 @@ def test_ask_sql_script_writes_file(monkeypatch, project_dir, tmp_path):
             ]
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     script_path = tmp_path / "out" / "queries.sql"
     runner = CliRunner()
@@ -1781,7 +1781,7 @@ def test_ask_sql_script_writes_file(monkeypatch, project_dir, tmp_path):
     assert result.exit_code == 0, result.output
     assert script_path.exists()
     content = script_path.read_text(encoding="utf-8")
-    prefix = _question_table_prefix("Top 5 states")
+    prefix = question_table_prefix("Top 5 states")
     assert "-- Question: Top 5 states" in content
     assert f"CREATE OR REPLACE TABLE {prefix}_1 AS" in content
     assert f"CREATE OR REPLACE TABLE {prefix}_2 AS" in content
@@ -1834,7 +1834,7 @@ def test_ask_sql_script_keeps_json_stdout_parseable(monkeypatch, project_dir, tm
             api_calls=0,
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
 
     script_path = tmp_path / "queries.sql"
     runner = CliRunner()
@@ -2007,7 +2007,7 @@ def test_run_ask_pipeline_logs_cost_entry(monkeypatch, project_dir):
     # to "anthropic" so the cost estimate exercises the Sonnet pricing table.
     settings.llm.provider = "anthropic"
     asyncio.run(
-        cli_module._run_ask_pipeline(
+        cli_module.run_ask_pipeline(
             question="How many orders are there?",
             settings=settings,
             resolved_model="claude-sonnet-4-6",
@@ -2017,7 +2017,7 @@ def test_run_ask_pipeline_logs_cost_entry(monkeypatch, project_dir):
     )
 
     log_path = Path(project_dir) / ".datasight" / "query_log.jsonl"
-    assert log_path.exists(), "query log should be created by _run_ask_pipeline"
+    assert log_path.exists(), "query log should be created by run_ask_pipeline"
     entries = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
     cost_entries = [e for e in entries if e.get("type") == "cost"]
     assert len(cost_entries) == 1
@@ -2086,7 +2086,7 @@ def test_run_ask_pipeline_includes_measure_guidance_in_prompt(monkeypatch, proje
 
     settings = Settings.from_env(str(Path(project_dir) / ".env"))
     asyncio.run(
-        cli_module._run_ask_pipeline(
+        cli_module.run_ask_pipeline(
             question="Show generation over time",
             settings=settings,
             resolved_model="claude-sonnet-4-6",
@@ -2229,7 +2229,7 @@ def test_run_ask_pipeline_uses_measure_semantics_for_energy_power_weighted_and_c
     settings = Settings.from_env(str(Path(project_dir) / ".env"))
 
     async def run_question(question: str):
-        return await cli_module._run_ask_pipeline(
+        return await cli_module.run_ask_pipeline(
             question=question,
             settings=settings,
             resolved_model="claude-sonnet-4-6",
@@ -2404,7 +2404,7 @@ def test_run_ask_pipeline_session_ids_unique_within_second(monkeypatch, project_
     settings = Settings.from_env(str(Path(project_dir) / ".env"))
 
     async def run_one(q):
-        return await cli_module._run_ask_pipeline(
+        return await cli_module.run_ask_pipeline(
             question=q,
             settings=settings,
             resolved_model="claude-sonnet-4-6",

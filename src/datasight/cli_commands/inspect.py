@@ -1,60 +1,25 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
+import asyncio
+import json
+
+import rich_click as click
+
+from datasight.data_profile import (
+    build_dataset_overview,
+    build_dimension_overview,
+    build_measure_overview,
+    build_prompt_recipes,
+    build_quality_overview,
+    build_trend_overview,
 )
 
-
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
-
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -99,8 +64,8 @@ def inspect(files, output_format, output_path):
     from datasight.explore import create_files_session_for_settings
     from datasight.schema import introspect_schema
 
-    _configure_logging("INFO")
-    db_settings = _current_db_settings_or_none()
+    cli.configure_logging("INFO")
+    db_settings = cli.current_db_settings_or_none()
 
     async def _run_phase(name: str, coro):
         _logger.info(f"[inspect] {name}…")
@@ -162,19 +127,19 @@ def inspect(files, output_format, output_path):
     results = asyncio.run(_run_all())
 
     if output_format == "json":
-        _write_or_print(json.dumps(results, indent=2), output_path)
+        cli.write_or_print(json.dumps(results, indent=2), output_path)
         return
 
     if output_format == "markdown":
         sections = [
-            _render_profile_markdown("dataset", results["profile"]),
-            _render_quality_markdown(results["quality"]),
-            _render_measures_markdown(results["measures"]),
-            _render_dimensions_markdown(results["dimensions"]),
-            _render_trends_markdown(results["trends"]),
-            _render_recipes_markdown(results["recipes"]),
+            cli.render_profile_markdown("dataset", results["profile"]),
+            cli.render_quality_markdown(results["quality"]),
+            cli.render_measures_markdown(results["measures"]),
+            cli.render_dimensions_markdown(results["dimensions"]),
+            cli.render_trends_markdown(results["trends"]),
+            cli.render_recipes_markdown(results["recipes"]),
         ]
-        _write_or_print("\n\n".join(sections), output_path)
+        cli.write_or_print("\n\n".join(sections), output_path)
         return
 
     console = Console(record=bool(output_path))
@@ -184,7 +149,7 @@ def inspect(files, output_format, output_path):
     # --- Profile ---
     profile_data = results["profile"]
     console.print(
-        _build_metric_table(
+        cli.build_metric_table(
             "Dataset Profile",
             [
                 ("Tables", str(profile_data["table_count"])),
@@ -195,7 +160,7 @@ def inspect(files, output_format, output_path):
     )
     if profile_data["largest_tables"]:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Largest Tables",
                 [("Table", "left"), ("Rows", "right"), ("Columns", "right")],
                 [
@@ -210,14 +175,14 @@ def inspect(files, output_format, output_path):
         )
     if profile_data["date_columns"]:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Date Coverage",
                 [("Column", "left"), ("Min", "left"), ("Max", "left")],
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        _format_profile_value(item.get("min")),
-                        _format_profile_value(item.get("max")),
+                        cli.format_profile_value(item.get("min")),
+                        cli.format_profile_value(item.get("max")),
                     ]
                     for item in profile_data["date_columns"]
                 ],
@@ -228,14 +193,14 @@ def inspect(files, output_format, output_path):
     quality_data = results["quality"]
     if quality_data["null_columns"] or quality_data["numeric_flags"]:
         console.print(
-            _build_metric_table(
+            cli.build_metric_table(
                 "Quality Audit",
                 [("Tables scanned", str(quality_data["table_count"]))],
             )
         )
         if quality_data["null_columns"]:
             console.print(
-                _build_profile_detail_table(
+                cli.build_profile_detail_table(
                     "Null-heavy Columns",
                     [("Column", "left"), ("Nulls", "right"), ("Null %", "right")],
                     [
@@ -250,7 +215,7 @@ def inspect(files, output_format, output_path):
             )
         if quality_data["numeric_flags"]:
             console.print(
-                _build_profile_detail_table(
+                cli.build_profile_detail_table(
                     "Numeric Range Flags",
                     [("Column", "left"), ("Issue", "left")],
                     [
@@ -261,7 +226,7 @@ def inspect(files, output_format, output_path):
             )
         if quality_data["notes"]:
             console.print(
-                _build_profile_detail_table(
+                cli.build_profile_detail_table(
                     "Quality Notes",
                     [("Observation", "left")],
                     [[item] for item in quality_data["notes"]],
@@ -272,7 +237,7 @@ def inspect(files, output_format, output_path):
     measure_data = results["measures"]
     if measure_data["measures"]:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Measure Candidates",
                 [
                     ("Column", "left"),
@@ -286,7 +251,7 @@ def inspect(files, output_format, output_path):
                         f"{item['table']}.{item['column']}",
                         item["role"]
                         + (f" [{item['display_name']}]" if item.get("display_name") else ""),
-                        _format_profile_value(item.get("unit"), "—"),
+                        cli.format_profile_value(item.get("unit"), "—"),
                         item["default_aggregation"],
                         item["recommended_rollup_sql"],
                     ]
@@ -299,7 +264,7 @@ def inspect(files, output_format, output_path):
     dimension_data = results["dimensions"]
     if dimension_data["dimension_columns"]:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Dimension Candidates",
                 [
                     ("Column", "left"),
@@ -310,8 +275,8 @@ def inspect(files, output_format, output_path):
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        _format_profile_value(item.get("distinct_count")),
-                        _format_profile_value(item.get("null_rate"), "0"),
+                        cli.format_profile_value(item.get("distinct_count")),
+                        cli.format_profile_value(item.get("null_rate"), "0"),
                         ", ".join((item.get("sample_values") or [])[:3]) or "none",
                     ]
                     for item in dimension_data["dimension_columns"]
@@ -320,7 +285,7 @@ def inspect(files, output_format, output_path):
         )
     if dimension_data["suggested_breakdowns"]:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Suggested Breakdowns",
                 [("Column", "left"), ("Reason", "left")],
                 [
@@ -334,7 +299,7 @@ def inspect(files, output_format, output_path):
     trend_data = results["trends"]
     if trend_data["trend_candidates"]:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Trend Candidates",
                 [
                     ("Table", "left"),
@@ -357,7 +322,7 @@ def inspect(files, output_format, output_path):
         )
     if trend_data["chart_recommendations"]:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Chart Recommendations",
                 [("Title", "left"), ("Type", "left"), ("Reason", "left")],
                 [
@@ -371,7 +336,7 @@ def inspect(files, output_format, output_path):
     recipes_data = results["recipes"]
     if recipes_data:
         console.print(
-            _build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Prompt Recipes",
                 [
                     ("ID", "right"),
@@ -394,4 +359,4 @@ def inspect(files, output_format, output_path):
         )
 
     if output_path:
-        _write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

@@ -1,60 +1,18 @@
-# ruff: noqa: F401, F403, F405
 """CLI command module."""
 
-from datasight import cli as cli_root
-from datasight.cli import *  # noqa: F403
-from datasight.cli import (
-    _build_metric_table,
-    _build_profile_detail_table,
-    _build_sql_script,
-    _configure_logging,
-    _current_db_settings_or_none,
-    _default_chart_extension,
-    _default_data_extension,
-    _emit_ask_result,
-    _emit_cli_provenance,
-    _epilog,
-    _fmt_dist,
-    _format_profile_value,
-    _iter_sql_tool_results,
-    _load_batch_entries,
-    _load_recipe_entries,
-    _load_schema_info_for_project,
-    _prepare_web_runtime,
-    _print_sql_queries,
-    _question_table_prefix,
-    _render_dimensions_markdown,
-    _render_distribution_markdown,
-    _render_doctor_markdown,
-    _render_integrity_markdown,
-    _render_measures_markdown,
-    _render_profile_markdown,
-    _render_quality_markdown,
-    _render_recipes_markdown,
-    _render_trends_markdown,
-    _render_validation_markdown,
-    _resolve_db_path,
-    _resolve_settings,
-    _sanitize_sql_identifier,
-    _slugify_filename,
-    _sql_comment_lines,
-    _validate_batch_entry,
-    _validate_settings_for_llm,
-    _write_batch_result_files,
-    _write_or_print,
-)
+import asyncio
+from pathlib import Path
 
+import rich_click as click
 
-def create_llm_client(*args, **kwargs):
-    return cli_root.create_llm_client(*args, **kwargs)
+from datasight.config import create_sql_runner_from_settings
 
-
-async def _run_ask_pipeline(*args, **kwargs):
-    return await cli_root._run_ask_pipeline(*args, **kwargs)
+from datasight import cli
+from datasight.cli_helpers import format_epilog
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -75,7 +33,7 @@ def report():
 
 @click.command(
     name="list",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -122,7 +80,7 @@ def report_list(project_dir):
 
 @click.command(
     name="run",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -165,7 +123,6 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
 
     REPORT_ID is the numeric ID shown by 'datasight report list'.
     """
-    import asyncio
 
     from rich.console import Console
 
@@ -173,7 +130,7 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
     from datasight.web.app import ReportStore
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = _resolve_settings(project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
 
     store = ReportStore(Path(project_dir) / ".datasight" / "reports.json")
     report_data = store.get(report_id)
@@ -204,13 +161,13 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
     if result.df is not None and not result.df.empty:
         match output_format:
             case "csv":
-                _write_or_print(
+                cli.write_or_print(
                     result.df.to_csv(index=False), output_path if not chart_format else None
                 )
             case "json":
                 json_output = result.df.to_json(orient="records", indent=2)
                 assert json_output is not None
-                _write_or_print(
+                cli.write_or_print(
                     json_output,
                     output_path if not chart_format else None,
                 )
@@ -228,7 +185,7 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
                 if len(result.df) > 50:
                     output_console.print(f"[dim]... showing 50 of {len(result.df)} rows[/dim]")
                 if output_path and not chart_format:
-                    _write_or_print(output_console.export_text(), output_path)
+                    cli.write_or_print(output_console.export_text(), output_path)
 
     if result.plotly_spec and chart_format:
         import json as json_mod
@@ -251,7 +208,7 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
 
 @click.command(
     name="delete",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 

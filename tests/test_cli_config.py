@@ -144,7 +144,7 @@ def test_project_env_overrides_global(isolated_xdg, tmp_path):
     project.mkdir()
     (project / ".env").write_text("ANTHROPIC_API_KEY=project-key\n", encoding="utf-8")
 
-    # Mirror _resolve_settings: project first, then global with override=False.
+    # Mirror resolve_settings: project first, then global with override=False.
     from dotenv import load_dotenv
 
     load_dotenv(project / ".env", override=False)

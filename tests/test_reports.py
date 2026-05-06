@@ -272,7 +272,7 @@ class TestReportRunCLI:
 
     def test_run_nonexistent_report(self, tmp_path):
         _seed_reports(tmp_path)
-        # Create a minimal .env so _resolve_settings works
+        # Create a minimal .env so resolve_settings works
         (tmp_path / ".env").write_text(
             "LLM_PROVIDER=ollama\nDB_MODE=duckdb\nDB_PATH=test.duckdb\n",
             encoding="utf-8",

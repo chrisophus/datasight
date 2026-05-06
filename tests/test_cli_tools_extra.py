@@ -953,25 +953,25 @@ def test_ask_sql_script_with_file_rejected(project_dir, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# _load_batch_entries coverage
+# load_batch_entries coverage
 # ---------------------------------------------------------------------------
 
 
 def test_load_batch_entries_txt(tmp_path):
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.txt"
     p.write_text("one\n\ntwo\n", encoding="utf-8")
-    entries = _load_batch_entries(str(p))
+    entries = load_batch_entries(str(p))
     assert [e["question"] for e in entries] == ["one", "two"]
 
 
 def test_load_batch_entries_jsonl(tmp_path):
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.jsonl"
     p.write_text('{"question": "one"}\n{"question": "two", "format": "csv"}\n', encoding="utf-8")
-    entries = _load_batch_entries(str(p))
+    entries = load_batch_entries(str(p))
     assert entries[0]["question"] == "one"
     assert entries[1]["output_format"] == "csv"
 
@@ -979,87 +979,87 @@ def test_load_batch_entries_jsonl(tmp_path):
 def test_load_batch_entries_jsonl_invalid(tmp_path):
     import click
 
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.jsonl"
     p.write_text("not json\n", encoding="utf-8")
     with pytest.raises(click.ClickException):
-        _load_batch_entries(str(p))
+        load_batch_entries(str(p))
 
 
 def test_load_batch_entries_jsonl_not_dict(tmp_path):
     import click
 
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.jsonl"
     p.write_text('["not-a-dict"]\n', encoding="utf-8")
     with pytest.raises(click.ClickException):
-        _load_batch_entries(str(p))
+        load_batch_entries(str(p))
 
 
 def test_load_batch_entries_yaml(tmp_path):
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.yaml"
     p.write_text("- question: one\n- question: two\n  format: json\n", encoding="utf-8")
-    entries = _load_batch_entries(str(p))
+    entries = load_batch_entries(str(p))
     assert entries[1]["output_format"] == "json"
 
 
 def test_load_batch_entries_yaml_invalid_format(tmp_path):
     import click
 
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.yaml"
     p.write_text("- question: one\n  format: bogus\n", encoding="utf-8")
     with pytest.raises(click.ClickException):
-        _load_batch_entries(str(p))
+        load_batch_entries(str(p))
 
 
 def test_load_batch_entries_yaml_not_list(tmp_path):
     import click
 
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.yaml"
     p.write_text("question: one\n", encoding="utf-8")
     with pytest.raises(click.ClickException):
-        _load_batch_entries(str(p))
+        load_batch_entries(str(p))
 
 
 def test_load_batch_entries_yaml_non_mapping(tmp_path):
     import click
 
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.yaml"
     p.write_text("- just a string\n", encoding="utf-8")
     with pytest.raises(click.ClickException):
-        _load_batch_entries(str(p))
+        load_batch_entries(str(p))
 
 
 def test_load_batch_entries_yaml_missing_question(tmp_path):
     import click
 
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.yaml"
     p.write_text("- name: x\n", encoding="utf-8")
     with pytest.raises(click.ClickException):
-        _load_batch_entries(str(p))
+        load_batch_entries(str(p))
 
 
 def test_load_batch_entries_yaml_invalid_chart_format(tmp_path):
     import click
 
-    from datasight.cli import _load_batch_entries
+    from datasight.cli import load_batch_entries
 
     p = tmp_path / "q.yaml"
     p.write_text("- question: one\n  chart_format: svg\n", encoding="utf-8")
     with pytest.raises(click.ClickException):
-        _load_batch_entries(str(p))
+        load_batch_entries(str(p))
 
 
 # ---------------------------------------------------------------------------
@@ -1068,56 +1068,56 @@ def test_load_batch_entries_yaml_invalid_chart_format(tmp_path):
 
 
 def test_slugify_filename():
-    from datasight.cli import _slugify_filename
+    from datasight.cli import slugify_filename
 
-    assert _slugify_filename("Hello, World!") == "hello-world"
+    assert slugify_filename("Hello, World!") == "hello-world"
     # Empty/whitespace input yields a fallback string (non-empty).
-    assert _slugify_filename("   ")
-    assert len(_slugify_filename("a" * 200)) <= 200
+    assert slugify_filename("   ")
+    assert len(slugify_filename("a" * 200)) <= 200
 
 
 def test_sanitize_sql_identifier():
-    from datasight.cli import _sanitize_sql_identifier
+    from datasight.cli import sanitize_sql_identifier
 
-    assert _sanitize_sql_identifier("Foo-Bar 1") != ""
+    assert sanitize_sql_identifier("Foo-Bar 1") != ""
 
 
 def test_default_data_extension():
-    from datasight.cli import _default_data_extension
+    from datasight.cli import default_data_extension
 
-    assert _default_data_extension("csv") == ".csv"
-    assert _default_data_extension("json") == ".json"
-    assert _default_data_extension("table") in (".txt", ".tsv", ".csv")
+    assert default_data_extension("csv") == ".csv"
+    assert default_data_extension("json") == ".json"
+    assert default_data_extension("table") in (".txt", ".tsv", ".csv")
 
 
 def test_default_chart_extension():
-    from datasight.cli import _default_chart_extension
+    from datasight.cli import default_chart_extension
 
-    assert _default_chart_extension("html") == ".html"
-    assert _default_chart_extension("json") == ".json"
-    assert _default_chart_extension("png") == ".png"
+    assert default_chart_extension("html") == ".html"
+    assert default_chart_extension("json") == ".json"
+    assert default_chart_extension("png") == ".png"
 
 
 def test_question_table_prefix():
-    from datasight.cli import _question_table_prefix
+    from datasight.cli import question_table_prefix
 
-    prefix = _question_table_prefix("What is the total generation?")
+    prefix = question_table_prefix("What is the total generation?")
     assert isinstance(prefix, str)
 
 
 def test_fmt_dist():
-    from datasight.cli import _fmt_dist
+    from datasight.cli import fmt_dist
 
-    assert _fmt_dist(None) in {"-", "?"}
-    assert _fmt_dist(1.23) not in {"-", "?"}
+    assert fmt_dist(None) in {"-", "?"}
+    assert fmt_dist(1.23) not in {"-", "?"}
 
 
 def test_format_profile_value():
-    from datasight.cli import _format_profile_value
+    from datasight.cli import format_profile_value
 
-    assert _format_profile_value(None) == "?"
-    assert _format_profile_value(None, default="-") == "-"
-    assert _format_profile_value(1.5) != "?"
+    assert format_profile_value(None) == "?"
+    assert format_profile_value(None, default="-") == "-"
+    assert format_profile_value(1.5) != "?"
 
 
 # ---------------------------------------------------------------------------

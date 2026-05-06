@@ -20,14 +20,14 @@ from textwrap import dedent
 from datasight.settings import Settings, load_global_env
 
 
-def _epilog(text: str) -> str:
+def format_epilog(text: str) -> str:
     """Normalize Click epilog text defined in indented decorators."""
     # Rich Click reflows epilog paragraphs. Treat each authored line as
     # its own paragraph so examples remain scannable in terminal help.
     return "\n\n".join(line.rstrip() for line in dedent(text).strip().splitlines())
 
 
-def _resolve_settings(
+def resolve_settings(
     project_dir: str,
     model_override: str | None = None,
 ) -> tuple[Settings, str]:
@@ -55,7 +55,7 @@ def _resolve_settings(
     return settings, resolved_model
 
 
-def _resolve_db_path(settings: Settings, project_dir: str) -> str:
+def resolve_db_path(settings: Settings, project_dir: str) -> str:
     """Resolve the configured database path, making relative paths absolute.
 
     Returns an empty string for non-file backends so callers can pass
