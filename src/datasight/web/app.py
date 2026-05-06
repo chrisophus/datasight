@@ -3914,16 +3914,16 @@ def _resolve_export_db_target(state: AppState) -> tuple[str, str]:
     when no project is loaded, returns ("", db_mode) so the script renders a
     TODO scaffold instead of a hardcoded connection.
     """
-    from datasight.cli import _resolve_db_path, _resolve_settings
+    from datasight.cli import resolve_db_path, resolve_settings
 
     if not state.project_dir:
         return "", state.sql_dialect or "duckdb"
     try:
-        settings, _ = _resolve_settings(state.project_dir)
+        settings, _ = resolve_settings(state.project_dir)
     except Exception:
         return "", state.sql_dialect or "duckdb"
     db_mode = settings.database.mode or "duckdb"
-    db_path = _resolve_db_path(settings, state.project_dir)
+    db_path = resolve_db_path(settings, state.project_dir)
     return db_path, db_mode
 
 

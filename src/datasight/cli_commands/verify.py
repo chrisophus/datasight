@@ -10,11 +10,11 @@ import rich_click as click
 from datasight.config import create_sql_runner_from_settings
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -63,7 +63,7 @@ def verify(project_dir, model, queries_path, verbose):
 
     # Logging
     level = "DEBUG" if verbose else "WARNING"
-    cli._configure_logging(level)
+    cli.configure_logging(level)
 
     # Load queries
     from datasight.config import load_example_queries
@@ -74,10 +74,10 @@ def verify(project_dir, model, queries_path, verbose):
         sys.exit(1)
 
     # Load settings and validate
-    settings, resolved_model = cli._resolve_settings(project_dir, model)
-    cli._validate_settings_for_llm(settings)
+    settings, resolved_model = cli.resolve_settings(project_dir, model)
+    cli.validate_settings_for_llm(settings)
 
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)

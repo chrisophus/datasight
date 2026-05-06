@@ -15,9 +15,9 @@ from loguru import logger
 
 from datasight import __version__
 from datasight.cli_helpers import (
-    _epilog as _epilog,
-    _resolve_db_path as _resolve_db_path,
-    _resolve_settings as _resolve_settings,
+    format_epilog as format_epilog,
+    resolve_db_path as resolve_db_path,
+    resolve_settings as resolve_settings,
 )
 from datasight.config import create_sql_runner_from_settings
 from datasight.data_profile import (
@@ -36,7 +36,7 @@ from datasight.settings import Settings, load_global_env
 _LOG_FORMAT = "{time:HH:mm:ss} | {level: <7} | {name} - {message}"
 
 
-def _configure_logging(level: str = "INFO") -> None:
+def configure_logging(level: str = "INFO") -> None:
     """Replace any existing Loguru sinks with a single stderr sink.
 
     Call from commands that log progress so every command uses the same
@@ -47,7 +47,7 @@ def _configure_logging(level: str = "INFO") -> None:
     logger.add(sys.stderr, level=level, format=_LOG_FORMAT)
 
 
-def _current_db_settings_or_none():
+def current_db_settings_or_none():
     """Load database settings from the current directory's .env, or None.
 
     Used by the file-based commands (``inspect``, ``generate --files``,
@@ -78,7 +78,7 @@ def _current_db_settings_or_none():
     return db
 
 
-def _validate_settings_for_llm(settings: Settings) -> None:
+def validate_settings_for_llm(settings: Settings) -> None:
     """Validate that required LLM settings are present. Exits on error."""
     errors = settings.validate()
     for error in errors:
@@ -87,7 +87,7 @@ def _validate_settings_for_llm(settings: Settings) -> None:
             sys.exit(1)
 
 
-async def _run_ask_pipeline(
+async def run_ask_pipeline(
     *,
     question: str,
     settings: Settings,
@@ -263,7 +263,7 @@ async def _run_ask_pipeline(
     return result
 
 
-def _write_or_print(text: str, output_path: str | None) -> None:
+def write_or_print(text: str, output_path: str | None) -> None:
     if output_path:
         Path(output_path).write_text(text, encoding="utf-8")
         click.echo(f"Data saved to {output_path}")
@@ -271,7 +271,7 @@ def _write_or_print(text: str, output_path: str | None) -> None:
         click.echo(text)
 
 
-def _render_profile_markdown(scope: str, profile_data: dict[str, Any]) -> str:
+def render_profile_markdown(scope: str, profile_data: dict[str, Any]) -> str:
     if scope == "dataset":
         lines = [
             "# Dataset Profile",
@@ -406,7 +406,7 @@ def _render_profile_markdown(scope: str, profile_data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_doctor_markdown(project_dir: str, checks: list[dict[str, Any]]) -> str:
+def render_doctor_markdown(project_dir: str, checks: list[dict[str, Any]]) -> str:
     lines = [
         "# datasight doctor",
         "",
@@ -420,7 +420,7 @@ def _render_doctor_markdown(project_dir: str, checks: list[dict[str, Any]]) -> s
     return "\n".join(lines)
 
 
-def _render_quality_markdown(quality_data: dict[str, Any]) -> str:
+def render_quality_markdown(quality_data: dict[str, Any]) -> str:
     lines = [
         "# Dataset Quality Audit",
         "",
@@ -479,7 +479,7 @@ def _render_quality_markdown(quality_data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_dimensions_markdown(dimension_data: dict[str, Any]) -> str:
+def render_dimensions_markdown(dimension_data: dict[str, Any]) -> str:
     lines = [
         "# Dimension Overview",
         "",
@@ -505,7 +505,7 @@ def _render_dimensions_markdown(dimension_data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_trends_markdown(trend_data: dict[str, Any]) -> str:
+def render_trends_markdown(trend_data: dict[str, Any]) -> str:
     lines = [
         "# Trend Overview",
         "",
@@ -535,7 +535,7 @@ def _render_trends_markdown(trend_data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_measures_markdown(measure_data: dict[str, Any]) -> str:
+def render_measures_markdown(measure_data: dict[str, Any]) -> str:
     lines = [
         "# Measure Overview",
         "",
@@ -575,7 +575,7 @@ def _render_measures_markdown(measure_data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_recipes_markdown(recipes: list[dict[str, str]]) -> str:
+def render_recipes_markdown(recipes: list[dict[str, str]]) -> str:
     lines = ["# Prompt Recipes", ""]
     for recipe in recipes:
         lines.extend(
@@ -591,7 +591,7 @@ def _render_recipes_markdown(recipes: list[dict[str, str]]) -> str:
     return "\n".join(lines).strip()
 
 
-def _render_integrity_markdown(data: dict[str, Any]) -> str:
+def render_integrity_markdown(data: dict[str, Any]) -> str:
     lines = [
         "# Referential Integrity",
         "",
@@ -634,7 +634,7 @@ def _render_integrity_markdown(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_distribution_markdown(data: dict[str, Any]) -> str:
+def render_distribution_markdown(data: dict[str, Any]) -> str:
     lines = [
         "# Distribution Profiling",
         "",
@@ -646,9 +646,9 @@ def _render_distribution_markdown(data: dict[str, Any]) -> str:
             role_info = f" (role: {d['role']})" if d.get("role") else ""
             lines.append(
                 f"- `{d['table']}.{d['column']}`{role_info}: "
-                f"p5={_fmt_dist(d.get('p5'))}, p50={_fmt_dist(d.get('p50'))}, "
-                f"p95={_fmt_dist(d.get('p95'))}, "
-                f"zero={_fmt_dist(d.get('zero_rate'))}%, neg={_fmt_dist(d.get('negative_rate'))}%, "
+                f"p5={fmt_dist(d.get('p5'))}, p50={fmt_dist(d.get('p50'))}, "
+                f"p95={fmt_dist(d.get('p95'))}, "
+                f"zero={fmt_dist(d.get('zero_rate'))}%, neg={fmt_dist(d.get('negative_rate'))}%, "
                 f"outliers={d.get('outlier_count', 0)}"
             )
     if data["energy_flags"]:
@@ -666,7 +666,7 @@ def _render_distribution_markdown(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_validation_markdown(data: dict[str, Any]) -> str:
+def render_validation_markdown(data: dict[str, Any]) -> str:
     summary = data.get("summary", {})
     lines = [
         "# Validation Report",
@@ -684,7 +684,7 @@ def _render_validation_markdown(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_tidy_markdown(data: dict[str, Any]) -> str:
+def render_tidy_markdown(data: dict[str, Any]) -> str:
     lines = [
         "# Tidy Reshape Suggestions",
         "",
@@ -720,7 +720,7 @@ def _render_tidy_markdown(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _fmt_dist(value: Any) -> str:
+def fmt_dist(value: Any) -> str:
     if value is None:
         return "?"
     if isinstance(value, float):
@@ -728,26 +728,26 @@ def _fmt_dist(value: Any) -> str:
     return str(value)
 
 
-def _format_profile_value(value: Any, default: str = "?") -> str:
+def format_profile_value(value: Any, default: str = "?") -> str:
     if value is None or value == "":
         return default
     return str(value)
 
 
-def _load_recipe_entries(
+def load_recipe_entries(
     project_dir: str,
     settings: Settings,
     table: str | None = None,
 ) -> list[dict[str, Any]]:
     from datasight.config import load_measure_overrides
 
-    resolved_db_path = _resolve_db_path(settings, project_dir)
+    resolved_db_path = resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
 
     async def _run_recipes() -> list[dict[str, Any]]:
-        sql_runner, schema_info = await _load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await load_schema_info_for_project(project_dir, settings)
         measure_overrides = load_measure_overrides(None, project_dir)
         if table:
             table_info = find_table_info(schema_info, table)
@@ -760,7 +760,7 @@ def _load_recipe_entries(
     return asyncio.run(_run_recipes())
 
 
-def _build_metric_table(title: str, rows: list[tuple[str, str]]) -> Any:
+def build_metric_table(title: str, rows: list[tuple[str, str]]) -> Any:
     from rich.table import Table as RichTable
 
     table = RichTable(title=title)
@@ -771,7 +771,7 @@ def _build_metric_table(title: str, rows: list[tuple[str, str]]) -> Any:
     return table
 
 
-def _build_profile_detail_table(
+def build_profile_detail_table(
     title: str,
     columns: list[tuple[str, Literal["left", "center", "right", "full", "default"]]],
     rows: list[list[str]],
@@ -786,7 +786,7 @@ def _build_profile_detail_table(
     return table
 
 
-async def _load_schema_info_for_project(
+async def load_schema_info_for_project(
     project_dir: str,
     settings: Settings,
 ) -> tuple[Any, list[dict[str, Any]]]:
@@ -807,13 +807,13 @@ async def _load_schema_info_for_project(
     return sql_runner, schema_info
 
 
-def _slugify_filename(value: str) -> str:
+def slugify_filename(value: str) -> str:
     cleaned = "".join(ch.lower() if ch.isalnum() else "-" for ch in value)
     parts = [part for part in cleaned.split("-") if part]
     return "-".join(parts)[:64] or "question"
 
 
-def _sanitize_sql_identifier(value: str) -> str:
+def sanitize_sql_identifier(value: str) -> str:
     """Convert a string into a snake_case SQL identifier.
 
     Keeps only ASCII alphanumerics (lowercased), joins with underscores,
@@ -832,7 +832,7 @@ def _sanitize_sql_identifier(value: str) -> str:
     return slug
 
 
-def _question_table_prefix(question: str) -> str:
+def question_table_prefix(question: str) -> str:
     """Build a stable, collision-resistant table-name prefix from a question.
 
     Combines a human-readable slug with an 8-char hash of the original
@@ -843,12 +843,12 @@ def _question_table_prefix(question: str) -> str:
     """
     import hashlib
 
-    slug = _sanitize_sql_identifier(question)
+    slug = sanitize_sql_identifier(question)
     digest = hashlib.sha256(question.encode("utf-8")).hexdigest()[:8]
     return f"{slug}_{digest}"
 
 
-def _iter_sql_tool_results(result) -> list[tuple[int, Any]]:
+def iter_sql_tool_results(result) -> list[tuple[int, Any]]:
     """Return ``(index, tool_result)`` pairs that contain a SQL query."""
     pairs: list[tuple[int, Any]] = []
     n = 0
@@ -860,7 +860,7 @@ def _iter_sql_tool_results(result) -> list[tuple[int, Any]]:
     return pairs
 
 
-def _sql_comment_lines(label: str, value: Any) -> list[str]:
+def sql_comment_lines(label: str, value: Any) -> list[str]:
     """Render ``value`` as a block of SQL line comments under ``label``.
 
     Any newlines in ``value`` are kept commented so that user-supplied
@@ -875,14 +875,14 @@ def _sql_comment_lines(label: str, value: Any) -> list[str]:
     return out
 
 
-def _print_sql_queries(result) -> None:
+def print_sql_queries(result) -> None:
     """Print SQL queries from a result to stderr, prefixed with comments.
 
     stderr (not stdout) because ``--print-sql`` is a diagnostic overlay and
     must not corrupt machine-readable output on stdout (``--format json``,
     ``--format csv``, shell pipelines).
     """
-    pairs = _iter_sql_tool_results(result)
+    pairs = iter_sql_tool_results(result)
     if not pairs:
         return
     click.echo(err=True)
@@ -893,12 +893,12 @@ def _print_sql_queries(result) -> None:
         click.echo(err=True)
         click.echo(f"-- Query {idx} (tool: {tool})", err=True)
         if tr.meta.get("error"):
-            for line in _sql_comment_lines("ERROR", tr.meta["error"]):
+            for line in sql_comment_lines("ERROR", tr.meta["error"]):
                 click.echo(line, err=True)
         click.echo(sql.rstrip(";") + ";", err=True)
 
 
-def _build_sql_script(result, question: str, dialect: str) -> str:
+def build_sql_script(result, question: str, dialect: str) -> str:
     """Build an executable SQL script that materializes results to tables.
 
     Each successful SQL query is wrapped in a ``CREATE OR REPLACE TABLE``
@@ -914,16 +914,16 @@ def _build_sql_script(result, question: str, dialect: str) -> str:
     the agent retries differently, still land their final result on the
     same table name and the script truly overwrites in place.
     """
-    prefix = _question_table_prefix(question)
+    prefix = question_table_prefix(question)
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     lines: list[str] = [
         "-- Generated by `datasight ask`",
         f"-- Generated at: {timestamp}",
-        *_sql_comment_lines("Question", question),
+        *sql_comment_lines("Question", question),
         f"-- Dialect: {dialect}",
         "",
     ]
-    pairs = _iter_sql_tool_results(result)
+    pairs = iter_sql_tool_results(result)
     if not pairs:
         lines.append("-- (no SQL queries were executed)")
         lines.append("")
@@ -936,7 +936,7 @@ def _build_sql_script(result, question: str, dialect: str) -> str:
             # do not consume a table-name index, so retries don't shift
             # the final result onto a different table on the next run.
             lines.append("-- Skipped attempt (errored, not materialized):")
-            lines.extend(_sql_comment_lines("  error", tr.meta["error"]))
+            lines.extend(sql_comment_lines("  error", tr.meta["error"]))
             lines.append("")
             continue
         body = (tr.meta.get("formatted_sql") or tr.meta.get("sql") or "").strip()
@@ -958,7 +958,7 @@ def _build_sql_script(result, question: str, dialect: str) -> str:
     return "\n".join(lines)
 
 
-def _default_data_extension(output_format: str) -> str:
+def default_data_extension(output_format: str) -> str:
     if output_format == "csv":
         return ".csv"
     if output_format == "json":
@@ -966,7 +966,7 @@ def _default_data_extension(output_format: str) -> str:
     return ".txt"
 
 
-def _default_chart_extension(chart_format: str) -> str:
+def default_chart_extension(chart_format: str) -> str:
     return {
         "html": ".html",
         "json": ".json",
@@ -974,7 +974,7 @@ def _default_chart_extension(chart_format: str) -> str:
     }[chart_format]
 
 
-def _validate_batch_entry(
+def validate_batch_entry(
     item: dict[str, Any],
     *,
     label: str,
@@ -1004,7 +1004,7 @@ def _validate_batch_entry(
     }
 
 
-def _load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
+def load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
     path = Path(questions_file)
     suffix = path.suffix.lower()
 
@@ -1024,7 +1024,7 @@ def _load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
                 raise click.ClickException(
                     f"Invalid JSONL entry at line {line_number}: expected an object with 'question'."
                 )
-            entries.append(_validate_batch_entry(item, label=f"JSONL line {line_number}"))
+            entries.append(validate_batch_entry(item, label=f"JSONL line {line_number}"))
         return entries
 
     if suffix in {".yaml", ".yml"}:
@@ -1041,7 +1041,7 @@ def _load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
                     f"Invalid YAML entry #{idx}: expected a mapping with 'question'."
                 )
             normalized_item = {str(key): value for key, value in item.items()}
-            entries.append(_validate_batch_entry(normalized_item, label=f"YAML entry #{idx}"))
+            entries.append(validate_batch_entry(normalized_item, label=f"YAML entry #{idx}"))
         return entries
 
     return [
@@ -1057,7 +1057,7 @@ def _load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
     ]
 
 
-def _emit_ask_result(
+def emit_ask_result(
     result, output_format: str, chart_format: str | None, output_path: str | None
 ) -> None:
     from rich import box
@@ -1073,11 +1073,11 @@ def _emit_ask_result(
     for tr in result.tool_results:
         if tr.df is not None and not tr.df.empty:
             if output_format == "csv":
-                _write_or_print(
+                write_or_print(
                     tr.df.to_csv(index=False), output_path if not chart_format else None
                 )
             elif output_format == "json":
-                _write_or_print(
+                write_or_print(
                     tr.df.to_json(orient="records", indent=2),
                     output_path if not chart_format else None,
                 )
@@ -1126,7 +1126,7 @@ def _emit_ask_result(
                     sys.exit(1)
 
 
-def _build_cli_provenance(
+def build_cli_provenance(
     *,
     question: str,
     result,
@@ -1190,7 +1190,7 @@ def _build_cli_provenance(
     }
 
 
-def _emit_cli_provenance(
+def emit_cli_provenance(
     *,
     question: str,
     result,
@@ -1199,7 +1199,7 @@ def _emit_cli_provenance(
     project_dir: str,
     provider: str | None = None,
 ) -> None:
-    provenance = _build_cli_provenance(
+    provenance = build_cli_provenance(
         question=question,
         result=result,
         model=model,
@@ -1210,7 +1210,7 @@ def _emit_cli_provenance(
     click.echo(json.dumps(provenance, indent=2))
 
 
-def _write_batch_result_files(
+def write_batch_result_files(
     *,
     output_dir: str | None,
     index: int,
@@ -1229,9 +1229,9 @@ def _write_batch_result_files(
             output_base = output_base.with_suffix("")
     else:
         if name:
-            base_name = f"{index:02d}-{_slugify_filename(name)}"
+            base_name = f"{index:02d}-{slugify_filename(name)}"
         else:
-            base_name = f"{index:02d}-{_slugify_filename(question)}"
+            base_name = f"{index:02d}-{slugify_filename(question)}"
         output_root = Path(output_dir) if output_dir else Path(".")
         output_base = output_root / base_name
 
@@ -1245,7 +1245,7 @@ def _write_batch_result_files(
     for tool_idx, tr in enumerate(result.tool_results, 1):
         if tr.df is not None and not tr.df.empty:
             data_path = Path(
-                str(output_base) + f".result-{tool_idx}{_default_data_extension(output_format)}"
+                str(output_base) + f".result-{tool_idx}{default_data_extension(output_format)}"
             )
             if output_format == "csv":
                 data_path.write_text(tr.df.to_csv(index=False), encoding="utf-8")
@@ -1257,7 +1257,7 @@ def _write_batch_result_files(
 
         if tr.plotly_spec and chart_format:
             chart_path = Path(
-                str(output_base) + f".chart-{tool_idx}{_default_chart_extension(chart_format)}"
+                str(output_base) + f".chart-{tool_idx}{default_chart_extension(chart_format)}"
             )
             if chart_format == "json":
                 chart_path.write_text(json.dumps(tr.plotly_spec, indent=2), encoding="utf-8")
@@ -1329,13 +1329,13 @@ click.rich_click.COMMAND_GROUPS = {
 }
 
 
-def _prepare_web_runtime(
+def prepare_web_runtime(
     *,
     port: int | None,
     model: str | None,
     project_dir: str | None,
     verbose: bool,
-    configure_logging: bool = True,
+    setup_logging: bool = True,
 ) -> tuple[Settings, str, int]:
     from dotenv import load_dotenv
 
@@ -1358,8 +1358,8 @@ def _prepare_web_runtime(
 
     load_global_env(override=False)
 
-    if configure_logging:
-        _configure_logging("DEBUG" if verbose else "INFO")
+    if setup_logging:
+        configure_logging("DEBUG" if verbose else "INFO")
 
     settings = Settings.from_env()
     resolved_model = model if model else settings.llm.model

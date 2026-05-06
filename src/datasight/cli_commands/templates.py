@@ -7,7 +7,7 @@ from typing import Any
 
 import rich_click as click
 
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 _PROJECT_DIR_OPT = click.option(
     "--project-dir",
@@ -19,7 +19,7 @@ _PROJECT_DIR_OPT = click.option(
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -84,7 +84,7 @@ def _resolve_project_duckdb(project_dir: str) -> Path | None:
 
 @click.command(
     name="save",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -196,7 +196,7 @@ def template_save(
 
 @click.command(
     name="list",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -239,7 +239,7 @@ def template_list(project_dir: str):
 
 @click.command(
     name="show",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -262,7 +262,7 @@ def template_show(name: str, project_dir: str):
 
 @click.command(
     name="apply",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -550,7 +550,7 @@ def template_apply(
 
 @click.command(
     name="delete",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 

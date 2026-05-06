@@ -8,11 +8,11 @@ import rich_click as click
 from datasight.config import create_sql_runner_from_settings
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -33,7 +33,7 @@ def report():
 
 @click.command(
     name="list",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -80,7 +80,7 @@ def report_list(project_dir):
 
 @click.command(
     name="run",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -130,7 +130,7 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
     from datasight.web.app import ReportStore
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = cli._resolve_settings(project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
 
     store = ReportStore(Path(project_dir) / ".datasight" / "reports.json")
     report_data = store.get(report_id)
@@ -161,13 +161,13 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
     if result.df is not None and not result.df.empty:
         match output_format:
             case "csv":
-                cli._write_or_print(
+                cli.write_or_print(
                     result.df.to_csv(index=False), output_path if not chart_format else None
                 )
             case "json":
                 json_output = result.df.to_json(orient="records", indent=2)
                 assert json_output is not None
-                cli._write_or_print(
+                cli.write_or_print(
                     json_output,
                     output_path if not chart_format else None,
                 )
@@ -185,7 +185,7 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
                 if len(result.df) > 50:
                     output_console.print(f"[dim]... showing 50 of {len(result.df)} rows[/dim]")
                 if output_path and not chart_format:
-                    cli._write_or_print(output_console.export_text(), output_path)
+                    cli.write_or_print(output_console.export_text(), output_path)
 
     if result.plotly_spec and chart_format:
         import json as json_mod
@@ -208,7 +208,7 @@ def report_run(report_id, project_dir, output_format, chart_format, output_path)
 
 @click.command(
     name="delete",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 

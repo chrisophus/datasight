@@ -6,11 +6,11 @@ from pathlib import Path
 import rich_click as click
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Use this when you want to fill in .env, schema_description.md,
         queries.yaml, and time_series.yaml by hand.

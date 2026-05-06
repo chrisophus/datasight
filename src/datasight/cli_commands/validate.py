@@ -14,11 +14,11 @@ from datasight.validation import (
 )
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -88,8 +88,8 @@ def validate(project_dir, table, config_path, output_format, output_path, scaffo
         click.echo(f"Wrote {target}. Edit the rules to match your dataset.")
         return
 
-    settings, _ = cli._resolve_settings(project_dir)
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -109,23 +109,23 @@ def validate(project_dir, table, config_path, output_format, output_path, scaffo
             return
 
     async def _run_validate():
-        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
         return await build_validation_report(schema_info, sql_runner.run_sql, rules)
 
     validation_data = asyncio.run(_run_validate())
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(validation_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(validation_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_validation_markdown(validation_data), output_path)
+        cli.write_or_print(cli.render_validation_markdown(validation_data), output_path)
         return
 
     summary = validation_data.get("summary", {})
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Validation Report",
             [
                 ("Rules run", str(validation_data.get("rule_count", 0))),
@@ -137,7 +137,7 @@ def validate(project_dir, table, config_path, output_format, output_path, scaffo
     )
     if validation_data["results"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Results",
                 [
                     ("Table", "left"),
@@ -167,4 +167,4 @@ def validate(project_dir, table, config_path, output_format, output_path, scaffo
             )
         )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

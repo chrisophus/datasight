@@ -7,11 +7,11 @@ import rich_click as click
 
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -166,8 +166,8 @@ def export(
     if fmt == "py":
         from datasight.export import export_session_python
 
-        settings, _ = cli._resolve_settings(project_dir)
-        db_path = cli._resolve_db_path(settings, project_dir)
+        settings, _ = cli.resolve_settings(project_dir)
+        db_path = cli.resolve_db_path(settings, project_dir)
         script = export_session_python(
             events,
             title=title,
@@ -184,8 +184,8 @@ def export(
     if fmt == "bundle":
         from datasight.export import export_session_bundle, normalize_bundle_includes
 
-        settings, _ = cli._resolve_settings(project_dir)
-        db_path = cli._resolve_db_path(settings, project_dir)
+        settings, _ = cli.resolve_settings(project_dir)
+        db_path = cli.resolve_db_path(settings, project_dir)
         try:
             bundle = export_session_bundle(
                 events,

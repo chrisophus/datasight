@@ -6,7 +6,7 @@ from pathlib import Path
 import rich_click as click
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 from datasight.settings import (
     Settings,
     global_env_path,
@@ -15,7 +15,7 @@ from datasight.settings import (
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         The user-global config file (~/.config/datasight/.env) holds API
         keys and tokens shared across every datasight project. Per-project

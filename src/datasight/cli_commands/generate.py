@@ -14,11 +14,11 @@ from datasight.data_profile import (
 )
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Use datasight init for blank templates; use datasight generate to create
         project files from an existing database or data files.
@@ -124,9 +124,9 @@ def generate(
     # preflight can respect a pre-existing DB_MODE (e.g. spark) and
     # avoid clobbering the user's backend config.
     level = "DEBUG" if verbose else "WARNING"
-    cli._configure_logging(level)
-    settings, resolved_model = cli._resolve_settings(project_dir, model)
-    cli._validate_settings_for_llm(settings)
+    cli.configure_logging(level)
+    settings, resolved_model = cli.resolve_settings(project_dir, model)
+    cli.validate_settings_for_llm(settings)
     normalized_import_mode = import_mode.lower()
 
     # Resolve the would-be DB path up front so we can include it in the
@@ -254,7 +254,7 @@ def generate(
             sys.exit(1)
 
     if not use_files:
-        resolved_db_path = cli._resolve_db_path(settings, project_dir)
+        resolved_db_path = cli.resolve_db_path(settings, project_dir)
         if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
             click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
             sys.exit(1)
@@ -275,7 +275,7 @@ def generate(
     elif use_files:
         click.echo(f"  Files:    {', '.join(files)}")
     else:
-        resolved_db_path = cli._resolve_db_path(settings, project_dir)
+        resolved_db_path = cli.resolve_db_path(settings, project_dir)
         click.echo(f"  Database: {settings.database.mode} — {resolved_db_path or sql_dialect}")
     click.echo()
 
@@ -443,7 +443,7 @@ def generate(
                 schema_info, sql_runner.run_sql, overrides=None
             )
         else:
-            _, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+            _, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
             measure_data = await build_measure_overview(
                 schema_info, sql_runner.run_sql, overrides=None
             )
@@ -471,7 +471,7 @@ def generate(
                 for t in tables
             ]
         else:
-            _, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+            _, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
         return format_time_series_yaml(schema_info)
 
     time_series_path.write_text(asyncio.run(_build_time_series_scaffold()), encoding="utf-8")

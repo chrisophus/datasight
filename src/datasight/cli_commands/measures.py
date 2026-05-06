@@ -15,11 +15,11 @@ from datasight.data_profile import (
 )
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -67,14 +67,14 @@ def measures(project_dir, table, scaffold, overwrite, output_format, output_path
     from datasight.config import load_measure_overrides
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = cli._resolve_settings(project_dir)
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
 
     async def _run_measures():
-        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
         measure_overrides = load_measure_overrides(None, project_dir)
         if table:
             table_info = find_table_info(schema_info, table)
@@ -102,23 +102,23 @@ def measures(project_dir, table, scaffold, overwrite, output_format, output_path
         return
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(measure_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(measure_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_measures_markdown(measure_data), output_path)
+        cli.write_or_print(cli.render_measures_markdown(measure_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Measure Overview",
             [("Tables scanned", str(measure_data["table_count"]))],
         )
     )
     if measure_data["measures"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Measure Candidates",
                 [
                     ("Column", "left"),
@@ -135,7 +135,7 @@ def measures(project_dir, table, scaffold, overwrite, output_format, output_path
                         f"{item['table']}.{item['column']}",
                         item["role"]
                         + (f" [{item['display_name']}]" if item.get("display_name") else ""),
-                        cli._format_profile_value(item.get("unit"), "—"),
+                        cli.format_profile_value(item.get("unit"), "—"),
                         item["default_aggregation"]
                         + (f" ({item['format']})" if item.get("format") else ""),
                         (
@@ -169,7 +169,7 @@ def measures(project_dir, table, scaffold, overwrite, output_format, output_path
             )
         )
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Aggregation Guidance",
                 [("Column", "left"), ("Avoid", "left"), ("Why", "left")],
                 [
@@ -184,9 +184,9 @@ def measures(project_dir, table, scaffold, overwrite, output_format, output_path
         )
     if measure_data["notes"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Notes", [("Observation", "left")], [[item] for item in measure_data["notes"]]
             )
         )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

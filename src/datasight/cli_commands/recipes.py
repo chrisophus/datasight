@@ -8,11 +8,11 @@ import rich_click as click
 
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -33,7 +33,7 @@ def recipes():
 
 @click.command(
     name="list",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -70,20 +70,20 @@ def recipes_list(project_dir, table, output_format, output_path):
     from rich.console import Console
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = cli._resolve_settings(project_dir)
-    recipe_data = cli._load_recipe_entries(project_dir, settings, table)
+    settings, _ = cli.resolve_settings(project_dir)
+    recipe_data = cli.load_recipe_entries(project_dir, settings, table)
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(recipe_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(recipe_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_recipes_markdown(recipe_data), output_path)
+        cli.write_or_print(cli.render_recipes_markdown(recipe_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_profile_detail_table(
+        cli.build_profile_detail_table(
             "Prompt Recipes",
             [
                 ("ID", "right"),
@@ -105,12 +105,12 @@ def recipes_list(project_dir, table, output_format, output_path):
         )
     )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)
 
 
 @click.command(
     name="run",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -162,13 +162,13 @@ def recipes_run(
     from rich.console import Console
 
     project_dir = str(Path(project_dir).resolve())
-    settings, resolved_model = cli._resolve_settings(project_dir, model)
-    cli._validate_settings_for_llm(settings)
+    settings, resolved_model = cli.resolve_settings(project_dir, model)
+    cli.validate_settings_for_llm(settings)
 
     if verbose:
-        cli._configure_logging("DEBUG")
+        cli.configure_logging("DEBUG")
 
-    recipe_data = cli._load_recipe_entries(project_dir, settings, table)
+    recipe_data = cli.load_recipe_entries(project_dir, settings, table)
     recipe = next((item for item in recipe_data if item["id"] == recipe_id), None)
     if recipe is None:
         click.echo(f"Recipe {recipe_id} not found.", err=True)
@@ -179,7 +179,7 @@ def recipes_run(
     console.print(f"[dim]Running recipe [{recipe['id']}]: {recipe['title']}[/dim]")
 
     result = asyncio.run(
-        cli._run_ask_pipeline(
+        cli.run_ask_pipeline(
             question=recipe["prompt"],
             settings=settings,
             resolved_model=resolved_model,
@@ -187,7 +187,7 @@ def recipes_run(
             sql_dialect=sql_dialect,
         )
     )
-    cli._emit_ask_result(result, output_format, chart_format, output_path)
+    cli.emit_ask_result(result, output_format, chart_format, output_path)
 
 
 recipes.add_command(recipes_list)

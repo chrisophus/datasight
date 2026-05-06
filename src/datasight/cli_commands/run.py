@@ -6,11 +6,11 @@ from pathlib import Path
 import rich_click as click
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -51,7 +51,7 @@ def run(
     auto-loaded as the project. Otherwise, use the UI to select a project,
     or pass --project-dir to specify one explicitly.
     """
-    _, resolved_model, resolved_port = cli._prepare_web_runtime(
+    _, resolved_model, resolved_port = cli.prepare_web_runtime(
         port=port,
         model=model,
         project_dir=project_dir,

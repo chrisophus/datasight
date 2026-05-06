@@ -14,11 +14,11 @@ from datasight.data_profile import (
 )
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -59,14 +59,14 @@ def dimensions(project_dir, table, output_format, output_path):
     from rich.console import Console
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = cli._resolve_settings(project_dir)
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
 
     async def _run_dimensions():
-        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
@@ -77,23 +77,23 @@ def dimensions(project_dir, table, output_format, output_path):
     dimension_data = asyncio.run(_run_dimensions())
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(dimension_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(dimension_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_dimensions_markdown(dimension_data), output_path)
+        cli.write_or_print(cli.render_dimensions_markdown(dimension_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Dimension Overview",
             [("Tables scanned", str(dimension_data["table_count"]))],
         )
     )
     if dimension_data["dimension_columns"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Dimension Candidates",
                 [
                     ("Column", "left"),
@@ -104,8 +104,8 @@ def dimensions(project_dir, table, output_format, output_path):
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        cli._format_profile_value(item.get("distinct_count")),
-                        cli._format_profile_value(item.get("null_rate"), "0"),
+                        cli.format_profile_value(item.get("distinct_count")),
+                        cli.format_profile_value(item.get("null_rate"), "0"),
                         ", ".join((item.get("sample_values") or [])[:3]) or "none",
                     ]
                     for item in dimension_data["dimension_columns"]
@@ -114,7 +114,7 @@ def dimensions(project_dir, table, output_format, output_path):
         )
     if dimension_data["suggested_breakdowns"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Suggested Breakdowns",
                 [("Column", "left"), ("Reason", "left")],
                 [
@@ -125,9 +125,9 @@ def dimensions(project_dir, table, output_format, output_path):
         )
     if dimension_data["join_hints"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Join Hints", [("Hint", "left")], [[item] for item in dimension_data["join_hints"]]
             )
         )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

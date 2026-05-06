@@ -12,7 +12,7 @@ import rich_click as click
 from datasight.data_profile import find_table_info
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 def _project_scope_options(func):
@@ -35,7 +35,7 @@ def _project_scope_options(func):
 async def _gather_tidy_data(project_dir: str, source_table: str | None, settings):
     from datasight.tidy import _detect_period_groups, analyze_tidy_patterns
 
-    sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+    sql_runner, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
     try:
         if source_table:
             table_info = find_table_info(schema_info, source_table)
@@ -81,8 +81,8 @@ async def _gather_tidy_data_for_files(files: tuple[str, ...]):
 
 def _resolve_tidy_settings(project_dir: str) -> tuple[Any, str, str]:
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = cli._resolve_settings(project_dir)
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -138,7 +138,7 @@ def _apply_reshapes(
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -162,7 +162,7 @@ def tidy():
 
 @click.command(
     name="suggest",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -212,16 +212,16 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
         tidy_data, _ = asyncio.run(_gather_tidy_data(project_dir, source_table, settings))
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(tidy_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(tidy_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_tidy_markdown(tidy_data), output_path)
+        cli.write_or_print(cli.render_tidy_markdown(tidy_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Tidy Reshape Suggestions",
             [
                 ("Tables scanned", str(tidy_data["table_count"])),
@@ -232,7 +232,7 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
     suggestions = tidy_data.get("period_suggestions") or []
     if suggestions:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Suggestions",
                 [
                     ("Source", "left"),
@@ -258,7 +258,7 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
     wide_tables = tidy_data.get("wide_tables") or []
     if wide_tables:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Wide Tables",
                 [("Table", "left"), ("Columns", "right"), ("Rows", "right"), ("Reason", "left")],
                 [
@@ -275,12 +275,12 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
     if not suggestions and not wide_tables:
         console.print("[dim]No untidy column-shape patterns detected.[/dim]")
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)
 
 
 @click.command(
     name="view",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -311,7 +311,7 @@ def tidy_view(project_dir, source_table, dry_run):
 
 @click.command(
     name="table",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 

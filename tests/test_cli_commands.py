@@ -460,7 +460,7 @@ def test_recipes_run_with_stubbed_pipeline(monkeypatch, tv_project):
             api_calls=0,
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
     runner = CliRunner()
     result = runner.invoke(cli, ["recipes", "run", "1", "--project-dir", tv_project])
     assert result.exit_code == 0
@@ -481,7 +481,7 @@ def test_ask_with_stubbed_pipeline(monkeypatch, tv_project):
             api_calls=0,
         )
 
-    monkeypatch.setattr("datasight.cli._run_ask_pipeline", fake_run_ask_pipeline)
+    monkeypatch.setattr("datasight.cli.run_ask_pipeline", fake_run_ask_pipeline)
     runner = CliRunner()
     result = runner.invoke(cli, ["ask", "How many states are there?", "--project-dir", tv_project])
     assert result.exit_code == 0

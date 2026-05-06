@@ -15,11 +15,11 @@ from datasight.data_profile import (
 )
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -64,8 +64,8 @@ def inspect(files, output_format, output_path):
     from datasight.explore import create_files_session_for_settings
     from datasight.schema import introspect_schema
 
-    cli._configure_logging("INFO")
-    db_settings = cli._current_db_settings_or_none()
+    cli.configure_logging("INFO")
+    db_settings = cli.current_db_settings_or_none()
 
     async def _run_phase(name: str, coro):
         _logger.info(f"[inspect] {name}…")
@@ -127,19 +127,19 @@ def inspect(files, output_format, output_path):
     results = asyncio.run(_run_all())
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(results, indent=2), output_path)
+        cli.write_or_print(json.dumps(results, indent=2), output_path)
         return
 
     if output_format == "markdown":
         sections = [
-            cli._render_profile_markdown("dataset", results["profile"]),
-            cli._render_quality_markdown(results["quality"]),
-            cli._render_measures_markdown(results["measures"]),
-            cli._render_dimensions_markdown(results["dimensions"]),
-            cli._render_trends_markdown(results["trends"]),
-            cli._render_recipes_markdown(results["recipes"]),
+            cli.render_profile_markdown("dataset", results["profile"]),
+            cli.render_quality_markdown(results["quality"]),
+            cli.render_measures_markdown(results["measures"]),
+            cli.render_dimensions_markdown(results["dimensions"]),
+            cli.render_trends_markdown(results["trends"]),
+            cli.render_recipes_markdown(results["recipes"]),
         ]
-        cli._write_or_print("\n\n".join(sections), output_path)
+        cli.write_or_print("\n\n".join(sections), output_path)
         return
 
     console = Console(record=bool(output_path))
@@ -149,7 +149,7 @@ def inspect(files, output_format, output_path):
     # --- Profile ---
     profile_data = results["profile"]
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Dataset Profile",
             [
                 ("Tables", str(profile_data["table_count"])),
@@ -160,7 +160,7 @@ def inspect(files, output_format, output_path):
     )
     if profile_data["largest_tables"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Largest Tables",
                 [("Table", "left"), ("Rows", "right"), ("Columns", "right")],
                 [
@@ -175,14 +175,14 @@ def inspect(files, output_format, output_path):
         )
     if profile_data["date_columns"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Date Coverage",
                 [("Column", "left"), ("Min", "left"), ("Max", "left")],
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        cli._format_profile_value(item.get("min")),
-                        cli._format_profile_value(item.get("max")),
+                        cli.format_profile_value(item.get("min")),
+                        cli.format_profile_value(item.get("max")),
                     ]
                     for item in profile_data["date_columns"]
                 ],
@@ -193,14 +193,14 @@ def inspect(files, output_format, output_path):
     quality_data = results["quality"]
     if quality_data["null_columns"] or quality_data["numeric_flags"]:
         console.print(
-            cli._build_metric_table(
+            cli.build_metric_table(
                 "Quality Audit",
                 [("Tables scanned", str(quality_data["table_count"]))],
             )
         )
         if quality_data["null_columns"]:
             console.print(
-                cli._build_profile_detail_table(
+                cli.build_profile_detail_table(
                     "Null-heavy Columns",
                     [("Column", "left"), ("Nulls", "right"), ("Null %", "right")],
                     [
@@ -215,7 +215,7 @@ def inspect(files, output_format, output_path):
             )
         if quality_data["numeric_flags"]:
             console.print(
-                cli._build_profile_detail_table(
+                cli.build_profile_detail_table(
                     "Numeric Range Flags",
                     [("Column", "left"), ("Issue", "left")],
                     [
@@ -226,7 +226,7 @@ def inspect(files, output_format, output_path):
             )
         if quality_data["notes"]:
             console.print(
-                cli._build_profile_detail_table(
+                cli.build_profile_detail_table(
                     "Quality Notes",
                     [("Observation", "left")],
                     [[item] for item in quality_data["notes"]],
@@ -237,7 +237,7 @@ def inspect(files, output_format, output_path):
     measure_data = results["measures"]
     if measure_data["measures"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Measure Candidates",
                 [
                     ("Column", "left"),
@@ -251,7 +251,7 @@ def inspect(files, output_format, output_path):
                         f"{item['table']}.{item['column']}",
                         item["role"]
                         + (f" [{item['display_name']}]" if item.get("display_name") else ""),
-                        cli._format_profile_value(item.get("unit"), "—"),
+                        cli.format_profile_value(item.get("unit"), "—"),
                         item["default_aggregation"],
                         item["recommended_rollup_sql"],
                     ]
@@ -264,7 +264,7 @@ def inspect(files, output_format, output_path):
     dimension_data = results["dimensions"]
     if dimension_data["dimension_columns"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Dimension Candidates",
                 [
                     ("Column", "left"),
@@ -275,8 +275,8 @@ def inspect(files, output_format, output_path):
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        cli._format_profile_value(item.get("distinct_count")),
-                        cli._format_profile_value(item.get("null_rate"), "0"),
+                        cli.format_profile_value(item.get("distinct_count")),
+                        cli.format_profile_value(item.get("null_rate"), "0"),
                         ", ".join((item.get("sample_values") or [])[:3]) or "none",
                     ]
                     for item in dimension_data["dimension_columns"]
@@ -285,7 +285,7 @@ def inspect(files, output_format, output_path):
         )
     if dimension_data["suggested_breakdowns"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Suggested Breakdowns",
                 [("Column", "left"), ("Reason", "left")],
                 [
@@ -299,7 +299,7 @@ def inspect(files, output_format, output_path):
     trend_data = results["trends"]
     if trend_data["trend_candidates"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Trend Candidates",
                 [
                     ("Table", "left"),
@@ -322,7 +322,7 @@ def inspect(files, output_format, output_path):
         )
     if trend_data["chart_recommendations"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Chart Recommendations",
                 [("Title", "left"), ("Type", "left"), ("Reason", "left")],
                 [
@@ -336,7 +336,7 @@ def inspect(files, output_format, output_path):
     recipes_data = results["recipes"]
     if recipes_data:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Prompt Recipes",
                 [
                     ("ID", "right"),
@@ -359,4 +359,4 @@ def inspect(files, output_format, output_path):
         )
 
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

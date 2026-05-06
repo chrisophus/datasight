@@ -12,11 +12,11 @@ from datasight.data_profile import find_table_info
 from datasight.distribution import build_distribution_overview
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -67,8 +67,8 @@ def distribution(project_dir, table, column, output_format, output_path):
         click.echo("Error: use either --table or --column, not both.", err=True)
         sys.exit(1)
 
-    settings, _ = cli._resolve_settings(project_dir)
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -78,7 +78,7 @@ def distribution(project_dir, table, column, output_format, output_path):
     measure_overrides = load_measure_overrides(None, project_dir)
 
     async def _run_distribution():
-        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
@@ -93,23 +93,23 @@ def distribution(project_dir, table, column, output_format, output_path):
     dist_data = asyncio.run(_run_distribution())
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(dist_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(dist_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_distribution_markdown(dist_data), output_path)
+        cli.write_or_print(cli.render_distribution_markdown(dist_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Distribution Profiling",
             [("Tables scanned", str(dist_data["table_count"]))],
         )
     )
     if dist_data["distributions"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Distributions",
                 [
                     ("Column", "left"),
@@ -123,11 +123,11 @@ def distribution(project_dir, table, column, output_format, output_path):
                 [
                     [
                         f"{d['table']}.{d['column']}",
-                        cli._fmt_dist(d.get("p5")),
-                        cli._fmt_dist(d.get("p50")),
-                        cli._fmt_dist(d.get("p95")),
-                        cli._fmt_dist(d.get("zero_rate")),
-                        cli._fmt_dist(d.get("negative_rate")),
+                        cli.fmt_dist(d.get("p5")),
+                        cli.fmt_dist(d.get("p50")),
+                        cli.fmt_dist(d.get("p95")),
+                        cli.fmt_dist(d.get("zero_rate")),
+                        cli.fmt_dist(d.get("negative_rate")),
                         str(d.get("outlier_count", 0)),
                     ]
                     for d in dist_data["distributions"]
@@ -136,7 +136,7 @@ def distribution(project_dir, table, column, output_format, output_path):
         )
     if dist_data["energy_flags"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Energy Flags",
                 [("Column", "left"), ("Flag", "left"), ("Detail", "left")],
                 [
@@ -147,7 +147,7 @@ def distribution(project_dir, table, column, output_format, output_path):
         )
     if dist_data["spikes"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Temporal Spikes",
                 [("Column", "left"), ("Period", "left"), ("Z-score", "right"), ("Detail", "left")],
                 [
@@ -163,11 +163,11 @@ def distribution(project_dir, table, column, output_format, output_path):
         )
     if dist_data["notes"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Notes",
                 [("Observation", "left")],
                 [[item] for item in dist_data["notes"]],
             )
         )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

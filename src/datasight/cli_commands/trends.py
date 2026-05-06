@@ -15,11 +15,11 @@ from datasight.data_profile import (
 )
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -67,7 +67,7 @@ def trends(files, project_dir, table, output_format, output_path):
             from datasight.explore import create_files_session_for_settings
             from datasight.schema import introspect_schema
 
-            db_settings = cli._current_db_settings_or_none()
+            db_settings = cli.current_db_settings_or_none()
             runner, _ = create_files_session_for_settings(list(files), db_settings)
             tables = await introspect_schema(runner.run_sql, runner=runner)
             schema_info = [
@@ -85,14 +85,14 @@ def trends(files, project_dir, table, output_format, output_path):
             measure_overrides: list[dict[str, Any]] = []
         else:
             resolved_dir = str(Path(project_dir or ".").resolve())
-            settings, _ = cli._resolve_settings(resolved_dir)
-            resolved_db_path = cli._resolve_db_path(settings, resolved_dir)
+            settings, _ = cli.resolve_settings(resolved_dir)
+            resolved_db_path = cli.resolve_db_path(settings, resolved_dir)
             if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(
                 resolved_db_path
             ):
                 click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
                 sys.exit(1)
-            sql_runner, schema_info = await cli._load_schema_info_for_project(
+            sql_runner, schema_info = await cli.load_schema_info_for_project(
                 resolved_dir, settings
             )
             measure_overrides = load_measure_overrides(None, resolved_dir)
@@ -107,23 +107,23 @@ def trends(files, project_dir, table, output_format, output_path):
     trend_data = asyncio.run(_run_trends())
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(trend_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(trend_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_trends_markdown(trend_data), output_path)
+        cli.write_or_print(cli.render_trends_markdown(trend_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Trend Overview",
             [("Tables scanned", str(trend_data["table_count"]))],
         )
     )
     if trend_data["trend_candidates"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Trend Candidates",
                 [
                     ("Table", "left"),
@@ -146,14 +146,14 @@ def trends(files, project_dir, table, output_format, output_path):
         )
     if trend_data["breakout_dimensions"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Breakout Dimensions",
                 [("Column", "left"), ("Distinct", "right"), ("Null %", "right")],
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        cli._format_profile_value(item.get("distinct_count")),
-                        cli._format_profile_value(item.get("null_rate"), "0"),
+                        cli.format_profile_value(item.get("distinct_count")),
+                        cli.format_profile_value(item.get("null_rate"), "0"),
                     ]
                     for item in trend_data["breakout_dimensions"]
                 ],
@@ -161,7 +161,7 @@ def trends(files, project_dir, table, output_format, output_path):
         )
     if trend_data["chart_recommendations"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Chart Recommendations",
                 [("Title", "left"), ("Type", "left"), ("Reason", "left")],
                 [
@@ -172,9 +172,9 @@ def trends(files, project_dir, table, output_format, output_path):
         )
     if trend_data["notes"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Notes", [("Observation", "left")], [[item] for item in trend_data["notes"]]
             )
         )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

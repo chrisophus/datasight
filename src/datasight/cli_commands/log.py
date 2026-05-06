@@ -5,12 +5,12 @@ from pathlib import Path
 
 import rich_click as click
 
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
     name="log",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 

@@ -6,11 +6,11 @@ import rich_click as click
 
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -26,7 +26,7 @@ def demo():
 
 @click.command(
     name="eia-generation",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -47,7 +47,7 @@ def demo_eia_generation(project_dir: str, min_year: int):
 
     PROJECT_DIR defaults to the current directory.
     """
-    cli._configure_logging("INFO")
+    cli.configure_logging("INFO")
 
     dest = Path(project_dir).resolve()
     dest.mkdir(parents=True, exist_ok=True)
@@ -77,7 +77,7 @@ def demo_eia_generation(project_dir: str, min_year: int):
 
 @click.command(
     name="dsgrid-tempo",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -98,7 +98,7 @@ def demo_dsgrid_tempo(project_dir: str):
 
     PROJECT_DIR defaults to the current directory.
     """
-    cli._configure_logging("INFO")
+    cli.configure_logging("INFO")
 
     dest = Path(project_dir).resolve()
     dest.mkdir(parents=True, exist_ok=True)
@@ -131,7 +131,7 @@ def demo_dsgrid_tempo(project_dir: str):
 
 @click.command(
     name="time-validation",
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Example:
 
@@ -152,7 +152,7 @@ def demo_time_validation(project_dir: str):
 
     PROJECT_DIR defaults to the current directory.
     """
-    cli._configure_logging("INFO")
+    cli.configure_logging("INFO")
 
     dest = Path(project_dir).resolve()
     dest.mkdir(parents=True, exist_ok=True)

@@ -10,7 +10,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 from datasight.session_archive import (
     import_session_archive,
     validate_session_archive_id,
@@ -50,7 +50,7 @@ def _load_session(project_dir: str, session_id: str) -> dict[str, Any]:
 
 
 @click.group(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 

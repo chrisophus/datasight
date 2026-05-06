@@ -11,11 +11,11 @@ import rich_click as click
 from datasight.config import create_sql_runner_from_settings
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -65,7 +65,7 @@ def doctor(project_dir, output_format, output_path):
     env_path = project_path / ".env"
     add_check(".env", env_path.exists(), str(env_path))
 
-    settings = cli._resolve_settings(str(project_path))[0]
+    settings = cli.resolve_settings(str(project_path))[0]
     validation_errors = settings.validate()
     add_check(
         "LLM settings",
@@ -75,7 +75,7 @@ def doctor(project_dir, output_format, output_path):
 
     db_detail = settings.database.mode
     db_ok = True
-    resolved_db_path = cli._resolve_db_path(settings, str(project_path))
+    resolved_db_path = cli.resolve_db_path(settings, str(project_path))
     if settings.database.mode in ("duckdb", "sqlite"):
         db_ok = bool(resolved_db_path) and os.path.exists(resolved_db_path)
         db_detail = resolved_db_path
@@ -127,7 +127,7 @@ def doctor(project_dir, output_format, output_path):
     failures = sum(1 for check in rendered_checks if not check["ok"])
 
     if output_format == "json":
-        cli._write_or_print(
+        cli.write_or_print(
             json.dumps(
                 {
                     "project_dir": str(project_path),
@@ -143,8 +143,8 @@ def doctor(project_dir, output_format, output_path):
         return
 
     if output_format == "markdown":
-        cli._write_or_print(
-            cli._render_doctor_markdown(str(project_path), rendered_checks),
+        cli.write_or_print(
+            cli.render_doctor_markdown(str(project_path), rendered_checks),
             output_path,
         )
         if failures:
@@ -165,6 +165,6 @@ def doctor(project_dir, output_format, output_path):
 
     console.print(table)
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)
     if failures:
         sys.exit(1)

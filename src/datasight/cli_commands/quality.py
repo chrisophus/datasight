@@ -14,11 +14,11 @@ from datasight.data_profile import (
 )
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -59,8 +59,8 @@ def quality(project_dir, table, output_format, output_path):
     from rich.console import Console
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = cli._resolve_settings(project_dir)
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -72,7 +72,7 @@ def quality(project_dir, table, output_format, output_path):
     time_series_configs = load_time_series_config(None, project_dir)
 
     async def _run_quality():
-        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
@@ -94,23 +94,23 @@ def quality(project_dir, table, output_format, output_path):
     quality_data = asyncio.run(_run_quality())
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(quality_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(quality_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_quality_markdown(quality_data), output_path)
+        cli.write_or_print(cli.render_quality_markdown(quality_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Dataset Quality Audit",
             [("Tables scanned", str(quality_data["table_count"]))],
         )
     )
     if quality_data["null_columns"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Null-heavy Columns",
                 [("Column", "left"), ("Nulls", "right"), ("Null %", "right")],
                 [
@@ -125,7 +125,7 @@ def quality(project_dir, table, output_format, output_path):
         )
     if quality_data["numeric_flags"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Numeric Range Flags",
                 [("Column", "left"), ("Issue", "left")],
                 [
@@ -136,14 +136,14 @@ def quality(project_dir, table, output_format, output_path):
         )
     if quality_data["date_columns"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Date Coverage",
                 [("Column", "left"), ("Min", "left"), ("Max", "left")],
                 [
                     [
                         f"{item['table']}.{item['column']}",
-                        cli._format_profile_value(item.get("min")),
-                        cli._format_profile_value(item.get("max")),
+                        cli.format_profile_value(item.get("min")),
+                        cli.format_profile_value(item.get("max")),
                     ]
                     for item in quality_data["date_columns"]
                 ],
@@ -151,7 +151,7 @@ def quality(project_dir, table, output_format, output_path):
         )
     if quality_data.get("time_series_summaries"):
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Time Series",
                 [("Column", "left"), ("Frequency", "left"), ("Rows", "right"), ("Range", "left")],
                 [
@@ -167,7 +167,7 @@ def quality(project_dir, table, output_format, output_path):
         )
     if quality_data.get("time_series_issues"):
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Temporal Completeness",
                 [("Column", "left"), ("Issue", "left"), ("Detail", "left")],
                 [
@@ -182,7 +182,7 @@ def quality(project_dir, table, output_format, output_path):
         )
     if quality_data.get("tidy_suggestions"):
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Tidy Reshape Suggestions",
                 [
                     ("Table", "left"),
@@ -205,7 +205,7 @@ def quality(project_dir, table, output_format, output_path):
         )
     if quality_data.get("wide_tables"):
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Wide Tables",
                 [("Table", "left"), ("Columns", "right"), ("Rows", "right"), ("Reason", "left")],
                 [
@@ -221,11 +221,11 @@ def quality(project_dir, table, output_format, output_path):
         )
     if quality_data["notes"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Notes",
                 [("Observation", "left")],
                 [[item] for item in quality_data["notes"]],
             )
         )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)

@@ -8,11 +8,11 @@ from pathlib import Path
 import rich_click as click
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -137,15 +137,15 @@ def ask(
 
     # Logging
     level = "DEBUG" if verbose else "WARNING"
-    cli._configure_logging(level)
+    cli.configure_logging(level)
 
     # Load settings and validate
-    settings, resolved_model = cli._resolve_settings(project_dir, model)
-    cli._validate_settings_for_llm(settings)
+    settings, resolved_model = cli.resolve_settings(project_dir, model)
+    cli.validate_settings_for_llm(settings)
 
     click.echo(f"Using {settings.llm.provider} model: {resolved_model}", err=True)
 
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -153,7 +153,7 @@ def ask(
     sql_dialect = settings.database.sql_dialect
 
     if questions_file:
-        entries = cli._load_batch_entries(questions_file)
+        entries = cli.load_batch_entries(questions_file)
         if not entries:
             click.echo("Error: no questions found in file.", err=True)
             sys.exit(1)
@@ -167,7 +167,7 @@ def ask(
             click.echo("-" * 72)
             try:
                 result = asyncio.run(
-                    cli._run_ask_pipeline(
+                    cli.run_ask_pipeline(
                         question=batch_question,
                         settings=settings,
                         resolved_model=resolved_model,
@@ -176,11 +176,11 @@ def ask(
                     )
                 )
                 if not provenance:
-                    cli._emit_ask_result(result, batch_output_format, None, None)
+                    cli.emit_ask_result(result, batch_output_format, None, None)
                 if print_sql:
-                    cli._print_sql_queries(result)
+                    cli.print_sql_queries(result)
                 if provenance:
-                    cli._emit_cli_provenance(
+                    cli.emit_cli_provenance(
                         question=batch_question,
                         result=result,
                         model=resolved_model,
@@ -189,7 +189,7 @@ def ask(
                         provider=settings.llm.provider,
                     )
                 if output_dir or entry.get("output"):
-                    written = cli._write_batch_result_files(
+                    written = cli.write_batch_result_files(
                         output_dir=output_dir,
                         index=idx,
                         question=batch_question,
@@ -210,7 +210,7 @@ def ask(
         sys.exit(0 if failures == 0 else 1)
 
     result = asyncio.run(
-        cli._run_ask_pipeline(
+        cli.run_ask_pipeline(
             question=question,
             settings=settings,
             resolved_model=resolved_model,
@@ -219,11 +219,11 @@ def ask(
         )
     )
     if not provenance:
-        cli._emit_ask_result(result, output_format, chart_format, output_path)
+        cli.emit_ask_result(result, output_format, chart_format, output_path)
     if print_sql:
-        cli._print_sql_queries(result)
+        cli.print_sql_queries(result)
     if provenance:
-        cli._emit_cli_provenance(
+        cli.emit_cli_provenance(
             question=question,
             result=result,
             model=resolved_model,
@@ -232,11 +232,11 @@ def ask(
             provider=settings.llm.provider,
         )
     if sql_script_path:
-        script_text = cli._build_sql_script(result, question, sql_dialect)
+        script_text = cli.build_sql_script(result, question, sql_dialect)
         script_file = Path(sql_script_path)
         script_file.parent.mkdir(parents=True, exist_ok=True)
         script_file.write_text(script_text, encoding="utf-8")
-        # stderr (not stdout) — same reasoning as ``_print_sql_queries``:
+        # stderr (not stdout) — same reasoning as ``print_sql_queries``:
         # the confirmation is a diagnostic and must not corrupt
         # machine-readable output on stdout (``--format json|csv``).
         click.echo(f"SQL script saved to {script_file}", err=True)

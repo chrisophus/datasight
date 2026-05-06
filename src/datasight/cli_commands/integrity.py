@@ -12,11 +12,11 @@ from datasight.data_profile import find_table_info
 from datasight.integrity import build_integrity_overview
 
 from datasight import cli
-from datasight.cli_helpers import _epilog
+from datasight.cli_helpers import format_epilog
 
 
 @click.command(
-    epilog=_epilog(
+    epilog=format_epilog(
         """
         Examples:
 
@@ -57,8 +57,8 @@ def integrity(project_dir, table, output_format, output_path):
     from rich.console import Console
 
     project_dir = str(Path(project_dir).resolve())
-    settings, _ = cli._resolve_settings(project_dir)
-    resolved_db_path = cli._resolve_db_path(settings, project_dir)
+    settings, _ = cli.resolve_settings(project_dir)
+    resolved_db_path = cli.resolve_db_path(settings, project_dir)
     if settings.database.mode in ("duckdb", "sqlite") and not os.path.exists(resolved_db_path):
         click.echo(f"Error: Database file not found: {resolved_db_path}", err=True)
         sys.exit(1)
@@ -68,7 +68,7 @@ def integrity(project_dir, table, output_format, output_path):
     declared_joins = load_joins_config(None, project_dir) or None
 
     async def _run_integrity():
-        sql_runner, schema_info = await cli._load_schema_info_for_project(project_dir, settings)
+        sql_runner, schema_info = await cli.load_schema_info_for_project(project_dir, settings)
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
@@ -83,23 +83,23 @@ def integrity(project_dir, table, output_format, output_path):
     integrity_data = asyncio.run(_run_integrity())
 
     if output_format == "json":
-        cli._write_or_print(json.dumps(integrity_data, indent=2), output_path)
+        cli.write_or_print(json.dumps(integrity_data, indent=2), output_path)
         return
 
     if output_format == "markdown":
-        cli._write_or_print(cli._render_integrity_markdown(integrity_data), output_path)
+        cli.write_or_print(cli.render_integrity_markdown(integrity_data), output_path)
         return
 
     console = Console(record=bool(output_path))
     console.print(
-        cli._build_metric_table(
+        cli.build_metric_table(
             "Referential Integrity",
             [("Tables scanned", str(integrity_data["table_count"]))],
         )
     )
     if integrity_data["primary_keys"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Primary Keys",
                 [
                     ("Table", "left"),
@@ -122,7 +122,7 @@ def integrity(project_dir, table, output_format, output_path):
         )
     if integrity_data["duplicate_keys"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Duplicate Keys",
                 [("Table", "left"), ("Column", "left"), ("Duplicates", "right")],
                 [
@@ -133,7 +133,7 @@ def integrity(project_dir, table, output_format, output_path):
         )
     if integrity_data["orphan_foreign_keys"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Orphan Foreign Keys",
                 [
                     ("Child", "left"),
@@ -154,7 +154,7 @@ def integrity(project_dir, table, output_format, output_path):
         )
     if integrity_data["join_explosions"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Join Explosion Risks",
                 [
                     ("Table A", "left"),
@@ -179,11 +179,11 @@ def integrity(project_dir, table, output_format, output_path):
         )
     if integrity_data["notes"]:
         console.print(
-            cli._build_profile_detail_table(
+            cli.build_profile_detail_table(
                 "Notes",
                 [("Observation", "left")],
                 [[item] for item in integrity_data["notes"]],
             )
         )
     if output_path:
-        cli._write_or_print(console.export_text(), output_path)
+        cli.write_or_print(console.export_text(), output_path)
