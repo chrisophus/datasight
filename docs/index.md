@@ -10,14 +10,14 @@ hide:
 into SQL, runs it, and gives you a table or interactive chart — no SQL knowledge needed.
 
 ![datasight chat view](assets/screenshots/02-chat-view.png)
+*The chat view: schema sidebar on the left, the AI's answer and an interactive chart on the right.*
 
 ## What you need to get started
 
 - A terminal (macOS Terminal, Linux shell, or Windows PowerShell)
-- Python 3.11+ (check with `python --version`) — or use [uv](use/how-to/install.md),
-  which manages this for you
+- Python 3.11+, or [uv](https://docs.astral.sh/uv/) (which installs Python for you)
 - **An API key** from one AI provider — or a free GitHub account. See
-  [Choosing an LLM](use/concepts/choosing-an-llm.md) if you're not sure which to pick.
+  [Choosing an AI provider](use/concepts/choosing-an-llm.md) if you're not sure which to pick.
   Not sure what an API key is? See the [Glossary](glossary.md).
 
 ## Try it in five minutes
@@ -40,6 +40,10 @@ datasight run
 # Open http://localhost:8084 and start asking questions
 ```
 
+**Don't have an API key yet?** [Install datasight](use/how-to/install.md#configure-an-ai-provider)
+walks you through getting one in about two minutes (or skipping the key entirely with
+GitHub Models on the free tier).
+
 The sidebar shows your tables and suggested starter questions. Type anything in the
 chat input — *"What are the top 10 power plants by total generation?"* — and datasight
 does the rest.
@@ -61,7 +65,7 @@ does the rest.
     dashboards, audit data quality, and more.
 
     [:octicons-arrow-right-24: Five-minute tutorial (EIA generation data)](use/tutorials/getting-started.md)
-    [:octicons-arrow-right-24: Choosing an LLM](use/concepts/choosing-an-llm.md)
+    [:octicons-arrow-right-24: Choosing an AI provider](use/concepts/choosing-an-llm.md)
     [:octicons-arrow-right-24: What the AI sees](use/concepts/what-the-ai-sees.md)
 
 -   :material-database-cog:{ .lg .middle } **[Project Setup](project-setup/tutorials/set-up-project.md)**

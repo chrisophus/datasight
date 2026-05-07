@@ -1,8 +1,10 @@
-# Choosing an LLM
+# Choosing an AI provider
 
-datasight works with any of several LLM backends. The right choice depends on
-your data sensitivity, budget, and whether you want to run a model locally.
-This page helps you pick one without reading every provider's pricing page.
+datasight uses an AI model — also called an *LLM* (Large Language Model) — to
+translate your questions into SQL. You can use a hosted service like Anthropic Claude
+or OpenAI's GPT, or run a model locally with Ollama. The right choice depends on
+your data sensitivity, budget, and whether you want to run a model locally. This
+page helps you pick one without reading every provider's pricing page.
 
 ## Quick decision guide
 

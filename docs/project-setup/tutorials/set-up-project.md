@@ -10,7 +10,7 @@ the schema description and example queries.
 
 - Python 3.11+
 - A database: DuckDB file, SQLite file, PostgreSQL server, or CSV/Parquet/Excel files
-- An LLM provider: Anthropic API key, OpenAI API key, GitHub account (free, public), or Ollama (free, local). Not sure which? See [Choosing an LLM](../../use/concepts/choosing-an-llm.md).
+- An AI provider: Anthropic API key, OpenAI API key, GitHub account (free, public), or Ollama (free, local). Not sure which? See [Choosing an AI provider](../../use/concepts/choosing-an-llm.md).
 
 ## Install datasight
 
@@ -69,7 +69,7 @@ assume you've already run `datasight config init` and put your API keys in
 `~/.config/datasight/.env`. If not, you can also paste the key directly
 into the project `.env` — both work. For guidance on picking a provider —
 data sensitivity, cost tiers, local vs hosted — see
-[Choosing an LLM](../../use/concepts/choosing-an-llm.md).
+[Choosing an AI provider](../../use/concepts/choosing-an-llm.md).
 
 **Not sure which option to pick? Start with Option A (Anthropic + DuckDB).**
 
@@ -121,6 +121,10 @@ DB_PATH=./my_database.duckdb
 use `qwen2.5:14b` (`ollama pull qwen2.5:14b`). For the best experience,
 consider GitHub Models (free tier) instead — only use Ollama when cost or
 data-security requirements demand local inference.
+
+All four LLM options above assume **DuckDB**, which is the right choice if you don't
+already have a database. Stick with `DB_MODE=duckdb` and skip to the next section
+unless you have an existing SQLite or PostgreSQL database to point at.
 
 **Using SQLite or PostgreSQL?** Set `DB_MODE` accordingly:
 

@@ -14,6 +14,12 @@ explains exactly what is and isn't included in those calls.
 | Your `queries.yaml` examples | Shows the AI the correct SQL patterns for your schema |
 | Small result samples | Used to generate a plain-English answer after the query runs (typically a few rows) |
 | Your natural-language question | The text you typed in the chat input |
+| The current conversation history | Prior questions, generated SQL, and the AI's prior responses are re-sent on every follow-up turn so the model has context |
+
+!!! note "Conversation history accumulates"
+    Each follow-up turn re-sends the full chat. If a question or its result happens to
+    contain something sensitive, that content stays in context until you start a new
+    chat (**New Chat** in the header, or the `N` keyboard shortcut).
 
 ## What datasight does NOT send
 
@@ -42,5 +48,5 @@ If your data sensitivity requirements prohibit that, two options keep everything
 - **Secure hosted endpoint** — Anthropic on AWS Bedrock, Azure OpenAI, or a corporate
   gateway with a data-processing agreement.
 
-See [Choosing an LLM](choosing-an-llm.md) for guidance on which option fits your
-situation.
+See [Choosing an AI provider](choosing-an-llm.md) for guidance on which option fits
+your situation.

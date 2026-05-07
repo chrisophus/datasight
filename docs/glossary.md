@@ -7,7 +7,9 @@ Short definitions for the terms you'll encounter throughout these docs.
 A password-like string you get from an AI provider (Anthropic, OpenAI, etc.) that lets
 datasight call their service on your behalf. It looks like `sk-ant-...` (Anthropic) or
 `sk-...` (OpenAI). Keep it secret — anyone who has it can make calls charged to your
-account. datasight reads it from your `.env` file and never uploads it anywhere.
+account. datasight reads it from your `.env` file and only sends it to the provider you
+configured (in the standard HTTP `Authorization` header). It is not logged, telemetered,
+or shared with anyone else.
 
 ## Context window
 
@@ -19,10 +21,12 @@ trim it down.
 
 ## Deterministic
 
-A command or step that always produces the same result and does not call an LLM. In the
+A command whose output depends only on your data and code, not on a stochastic AI
+model. Re-running it against the same database returns the same result. In the
 datasight docs this usually means "runs without calling the AI" — commands like
 `datasight profile`, `datasight quality`, and `datasight tidy suggest` fall into
-this category. Contrast with `datasight ask`, which sends a request to the LLM.
+this category. Contrast with `datasight ask`, which sends a request to the LLM and
+may produce different SQL on different runs even for the same question.
 
 ## Dimension
 
@@ -32,8 +36,9 @@ scenario. datasight infers likely dimensions from column names and distinct-valu
 ## DuckDB
 
 A fast in-process analytical database. It's the default backend for datasight because
-it needs no server setup and handles CSV, Parquet, and Excel files natively. If you
-don't have an existing database, DuckDB is the right choice.
+it needs no server setup and reads CSV and Parquet files natively (Excel is supported
+through a small pandas-based adapter). If you don't have an existing database, DuckDB
+is the right choice.
 
 ## .env file
 
@@ -64,7 +69,7 @@ value distributions.
 
 Software for running AI models locally on your own computer. Use it when your data is
 too sensitive to send to a cloud API, or when you want zero per-query cost and are
-willing to run a GPU. See [Choosing an LLM](use/concepts/choosing-an-llm.md).
+willing to run a GPU. See [Choosing an AI provider](use/concepts/choosing-an-llm.md).
 
 ## Parquet
 
@@ -108,6 +113,6 @@ LLM agent to query. See [Tidy a wide-month spreadsheet](use/tutorials/tidy.md).
 
 ## Token
 
-The unit AI providers use to measure and bill for LLM usage. Roughly one token per
-word (or ~4 characters). A database schema with many tables can easily reach thousands
-of tokens.
+The unit AI providers use to measure and bill for LLM usage. Roughly four characters
+of English text per token, or about 100 tokens per 75 words. A database schema with
+many tables can easily reach thousands of tokens.

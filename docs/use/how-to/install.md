@@ -55,6 +55,11 @@ Alternatively, paste the key directly into a project's `.env` file instead.
     No other settings are needed — `anthropic` is the default provider and
     Claude Haiku is the default model, which handles SQL generation well at low cost.
 
+    !!! note "Anthropic accounts require a payment method"
+        New accounts come with trial credit, but you'll need to add a payment method
+        before that runs out. If you'd rather skip billing entirely, see
+        **GitHub Models** below — it's free with just a GitHub account.
+
 === "OpenAI"
 
     ```bash
@@ -109,7 +114,7 @@ Alternatively, paste the key directly into a project's `.env` file instead.
 
     `qwen2.5:7b` works well for CLI queries (`datasight ask`). For the web UI with
     chart generation, `qwen2.5:14b` handles the more complex interactions better.
-    See [Choosing an LLM](../concepts/choosing-an-llm.md) for hardware sizing guidance.
+    See [Choosing an AI provider](../concepts/choosing-an-llm.md) for hardware sizing guidance.
 
 See the [Configuration reference](../../reference/configuration.md) for every supported
 variable.

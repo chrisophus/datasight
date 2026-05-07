@@ -86,7 +86,7 @@ nav:
           - Connect to a remote Flight SQL backend: use/how-to/connect-flight-sql.md
           - Connect to an Apache Spark backend: use/how-to/connect-spark.md
       - Concepts:
-          - Choosing an LLM: use/concepts/choosing-an-llm.md
+          - Choosing an AI provider: use/concepts/choosing-an-llm.md
           - What the AI sees: use/concepts/what-the-ai-sees.md
           - Why clarifying questions appear: use/concepts/query-confidence.md
           - Trusting AI-generated results: use/concepts/trusting-ai-results.md
