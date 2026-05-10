@@ -23,6 +23,7 @@ from datasight.tidy_review import (
     dump_plan,
     load_plan,
     resolve_source_disposition,
+    update_measures_yaml_for_apply,
     update_schema_yaml_for_apply,
     validate_against_schema,
 )
@@ -807,7 +808,7 @@ def _edit_proposal_inline(suggestion: Any) -> None:
             click.echo("  Unknown choice; pick 1, 2, 3, or b.")
 
 
-def _apply_review_proposals(
+def _apply_review_proposals(  # noqa: C901
     suggestions: list,
     disposition: Any,
     mode: str,
@@ -873,6 +874,19 @@ def _apply_review_proposals(
                         click.echo(f"Updated {Path(project_dir) / 'schema.yaml'}")
                 except OSError as exc:
                     click.echo(f"warn: schema.yaml not updated: {exc}", err=True)
+                # Same for measures.yaml: drop entries whose columns no
+                # longer exist after the reshape and seed a stub for the
+                # new value column.
+                try:
+                    rewrote = update_measures_yaml_for_apply(
+                        project_dir,
+                        suggestion=suggestion,
+                        result=result,
+                    )
+                    if rewrote:
+                        click.echo(f"Updated {Path(project_dir) / 'measures.yaml'}")
+                except OSError as exc:
+                    click.echo(f"warn: measures.yaml not updated: {exc}", err=True)
             audit.append(result.to_dict())
     finally:
         conn.close()

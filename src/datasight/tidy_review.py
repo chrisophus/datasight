@@ -752,6 +752,182 @@ def _has_table_entry(tables: list[Any], name: str) -> bool:
     return any(isinstance(e, dict) and e.get("name") == name for e in tables)
 
 
+_MEASURES_YAML_HEADER = (
+    "# datasight measure overrides\n"
+    "# Edit these entries to lock in project-specific aggregation behavior.\n"
+    "# Fields omitted here will keep using inferred defaults.\n"
+    "\n"
+)
+
+
+def _build_value_entry(suggestion: TidySuggestion, table: str) -> dict[str, Any]:
+    """Build the seeded measures.yaml entry for the long form's value column.
+
+    Mirrors what ``datasight generate`` writes: full inferred fields with
+    None / empty values stripped, so the user can see what's available to
+    override without consulting docs. The dtype assumption (DOUBLE) is
+    safe because DuckDB UNPIVOT always widens the value column to the
+    broadest numeric type of the mapped columns.
+    """
+    # Late import — data_profile imports tidy_review-adjacent helpers at
+    # module load, so importing it at the top here would create a cycle.
+    from datasight.data_profile import _infer_measure_semantics
+
+    value_column = suggestion.value_column
+    sibling_columns = (
+        list(suggestion.id_columns) + [d.name for d in suggestion.dimensions] + [value_column]
+    )
+    inferred = _infer_measure_semantics(value_column, "DOUBLE", sibling_columns)
+    if inferred is None:
+        return {"table": table, "column": value_column}
+
+    candidate: dict[str, Any] = {
+        "table": table,
+        "column": value_column,
+        "role": inferred.get("role", "measure"),
+        "unit": inferred.get("unit"),
+        "default_aggregation": inferred.get("default_aggregation", "avg"),
+        "average_strategy": inferred.get("average_strategy", "avg"),
+        "weight_column": inferred.get("weight_column"),
+        "allowed_aggregations": inferred.get("allowed_aggregations", []),
+        "forbidden_aggregations": inferred.get("forbidden_aggregations", []),
+        "additive_across_category": bool(inferred.get("additive_across_category")),
+        "additive_across_time": bool(inferred.get("additive_across_time")),
+        "reason": inferred.get("reason", ""),
+    }
+    return {key: value for key, value in candidate.items() if value not in (None, [], "")}
+
+
+def update_measures_yaml_for_apply(  # noqa: C901
+    project_dir: str,
+    *,
+    suggestion: TidySuggestion,
+    result: ApplyResult,
+    create_if_absent: bool = False,
+) -> bool:
+    """Sync ``measures.yaml`` with what just changed in the database.
+
+    The wide-form measure columns get pivoted into a single value column on
+    the long form, so any pre-existing measure overrides that target those
+    source columns become stale (the columns no longer exist on the
+    relevant table). This helper cleans those up per disposition mode and
+    seeds a fully-inferred entry for the new value column so the user has
+    somewhere to attach overrides:
+
+    - ``keep`` — source still has the mapped columns; existing entries
+      stay valid. Append a fresh entry for the long form's value column.
+    - ``rename`` — the source's table name moved; rewrite ``table`` on
+      every entry from ``suggestion.table`` to ``result.source_renamed_to``
+      (the columns themselves haven't changed, just the table name).
+      Append a fresh entry for the long form's value column.
+    - ``replace`` — the source's wide pivot columns are gone (collapsed
+      into the value column on the long form, which then takes over the
+      source's name). Drop the mapped-column entries on ``source_table``
+      (its surviving id-columns keep theirs), and rewrite any entries
+      pointing at the intermediate ``target_object_name`` to the final
+      name. Append a fresh entry for the value column.
+    - ``drop`` — the source table is dropped entirely. Remove every
+      entry that references it, then append a fresh entry for the value
+      column on the long form (still at ``target_object_name``).
+
+    The seeded entry uses the same inference path as ``datasight
+    generate`` so the file remains scannable: role, default_aggregation,
+    allowed_aggregations, etc. all show up with sensible defaults the
+    user can edit. Existing user overrides on other entries are preserved
+    verbatim.
+
+    By default this is a no-op when ``measures.yaml`` is absent — matches
+    the CLI semantics for ``schema.yaml``. Pass ``create_if_absent=True``
+    from the web Apply path so an explicit user action persists.
+
+    Returns ``True`` when the file was rewritten (or freshly written).
+    Comments and original formatting beyond the leading datasight header
+    are not preserved — the entries are round-tripped through
+    ``yaml.safe_dump``.
+    """
+    path = Path(project_dir) / "measures.yaml"
+    if not path.exists():
+        if not create_if_absent:
+            return False
+        existing: list[Any] = []
+    else:
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+        except yaml.YAMLError as exc:
+            logger.warning(f"measures.yaml: not updated (parse error: {exc})")
+            return False
+        if not isinstance(data, list):
+            logger.warning(
+                f"measures.yaml: not updated (expected list, got {type(data).__name__})"
+            )
+            return False
+        existing = list(data)
+
+    mapped_columns = {m.column for m in suggestion.column_mappings}
+    source_table = suggestion.table
+
+    match result.source_disposition:
+        case "rename":
+            new_name = result.source_renamed_to
+            updated: list[Any] = []
+            for entry in existing:
+                if isinstance(entry, dict) and entry.get("table") == source_table and new_name:
+                    renamed = dict(entry)
+                    renamed["table"] = new_name
+                    updated.append(renamed)
+                else:
+                    updated.append(entry)
+        case "replace":
+            # Source's wide pivot columns are gone; long form is renamed
+            # from target_object_name to take over source_table's name.
+            # Pre-existing entries pointing at target_object_name now
+            # reference a name that no longer exists — rewrite them.
+            intermediate = suggestion.target_object_name
+            final_name = result.final_target_name
+            updated = []
+            for entry in existing:
+                if not isinstance(entry, dict):
+                    updated.append(entry)
+                    continue
+                entry_table = entry.get("table")
+                if entry_table == source_table and entry.get("column") in mapped_columns:
+                    continue
+                if entry_table == intermediate and intermediate != final_name:
+                    rewritten = dict(entry)
+                    rewritten["table"] = final_name
+                    updated.append(rewritten)
+                else:
+                    updated.append(entry)
+        case "drop":
+            # Source table is gone entirely — every entry referencing it
+            # is now stale, not just the mapped pivot columns.
+            updated = [
+                entry
+                for entry in existing
+                if not (isinstance(entry, dict) and entry.get("table") == source_table)
+            ]
+        case _:  # keep
+            updated = list(existing)
+
+    value_table = result.final_target_name
+    value_column = suggestion.value_column
+    has_value_entry = any(
+        isinstance(entry, dict)
+        and entry.get("table") == value_table
+        and entry.get("column") == value_column
+        for entry in updated
+    )
+    if not has_value_entry:
+        updated.append(_build_value_entry(suggestion, value_table))
+
+    if updated == existing:
+        return False
+
+    body = yaml.safe_dump(updated, sort_keys=False, allow_unicode=False).strip()
+    path.write_text(_MEASURES_YAML_HEADER + body + "\n", encoding="utf-8")
+    return True
+
+
 def resolve_source_disposition(
     keep: bool,
     rename_to: str | None,
@@ -795,6 +971,7 @@ __all__ = [
     "dump_plan",
     "load_plan",
     "resolve_source_disposition",
+    "update_measures_yaml_for_apply",
     "update_schema_yaml_for_apply",
     "validate_against_schema",
 ]
