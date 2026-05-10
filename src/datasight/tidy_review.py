@@ -752,6 +752,117 @@ def _has_table_entry(tables: list[Any], name: str) -> bool:
     return any(isinstance(e, dict) and e.get("name") == name for e in tables)
 
 
+_MEASURES_YAML_HEADER = (
+    "# datasight measure overrides\n"
+    "# Edit these entries to lock in project-specific aggregation behavior.\n"
+    "# Fields omitted here will keep using inferred defaults.\n"
+    "\n"
+)
+
+
+def update_measures_yaml_for_apply(
+    project_dir: str,
+    *,
+    suggestion: TidySuggestion,
+    result: ApplyResult,
+    create_if_absent: bool = False,
+) -> bool:
+    """Sync ``measures.yaml`` with what just changed in the database.
+
+    The wide-form measure columns get pivoted into a single value column on
+    the long form, so any pre-existing measure overrides that target those
+    source columns become stale (the columns no longer exist on the
+    relevant table). This helper cleans those up per disposition mode and
+    seeds a stub entry for the new value column so the user has somewhere
+    to attach overrides:
+
+    - ``keep`` — source still has the mapped columns; existing entries
+      stay valid. Append a stub for the long form's value column.
+    - ``rename`` — the source's table name moved; rewrite ``table`` on
+      every entry from ``suggestion.table`` to ``result.source_renamed_to``
+      (the columns themselves haven't changed, just the table name).
+      Append a stub for the long form's value column.
+    - ``replace`` / ``drop`` — the mapped columns no longer exist on
+      ``suggestion.table``. Drop entries that reference them, then append
+      a stub for the value column on its final table.
+
+    The seeded stub is intentionally minimal (``table`` + ``column`` only)
+    so missing fields fall back to inference at read time. Callers who
+    want richer defaults should edit the file afterward.
+
+    By default this is a no-op when ``measures.yaml`` is absent — matches
+    the CLI semantics for ``schema.yaml``. Pass ``create_if_absent=True``
+    from the web Apply path so an explicit user action persists.
+
+    Returns ``True`` when the file was rewritten (or freshly written).
+    Comments and original formatting beyond the leading datasight header
+    are not preserved — the entries are round-tripped through
+    ``yaml.safe_dump``.
+    """
+    path = Path(project_dir) / "measures.yaml"
+    if not path.exists():
+        if not create_if_absent:
+            return False
+        existing: list[Any] = []
+    else:
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+        except yaml.YAMLError as exc:
+            logger.warning(f"measures.yaml: not updated (parse error: {exc})")
+            return False
+        if not isinstance(data, list):
+            logger.warning(
+                f"measures.yaml: not updated (expected list, got {type(data).__name__})"
+            )
+            return False
+        existing = list(data)
+
+    mapped_columns = {m.column for m in suggestion.column_mappings}
+    source_table = suggestion.table
+
+    match result.source_disposition:
+        case "rename":
+            new_name = result.source_renamed_to
+            updated: list[Any] = []
+            for entry in existing:
+                if isinstance(entry, dict) and entry.get("table") == source_table and new_name:
+                    renamed = dict(entry)
+                    renamed["table"] = new_name
+                    updated.append(renamed)
+                else:
+                    updated.append(entry)
+        case "replace" | "drop":
+            updated = [
+                entry
+                for entry in existing
+                if not (
+                    isinstance(entry, dict)
+                    and entry.get("table") == source_table
+                    and entry.get("column") in mapped_columns
+                )
+            ]
+        case _:  # keep
+            updated = list(existing)
+
+    value_table = result.final_target_name
+    value_column = suggestion.value_column
+    has_value_entry = any(
+        isinstance(entry, dict)
+        and entry.get("table") == value_table
+        and entry.get("column") == value_column
+        for entry in updated
+    )
+    if not has_value_entry:
+        updated.append({"table": value_table, "column": value_column})
+
+    if updated == existing:
+        return False
+
+    body = yaml.safe_dump(updated, sort_keys=False, allow_unicode=False).strip()
+    path.write_text(_MEASURES_YAML_HEADER + body + "\n", encoding="utf-8")
+    return True
+
+
 def resolve_source_disposition(
     keep: bool,
     rename_to: str | None,
@@ -795,6 +906,7 @@ __all__ = [
     "dump_plan",
     "load_plan",
     "resolve_source_disposition",
+    "update_measures_yaml_for_apply",
     "update_schema_yaml_for_apply",
     "validate_against_schema",
 ]

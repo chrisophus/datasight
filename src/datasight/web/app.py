@@ -104,6 +104,7 @@ from datasight.tidy_review import (
     SourceDisposition,
     _parse_proposal,
     apply_proposal,
+    update_measures_yaml_for_apply,
     update_schema_yaml_for_apply,
     validate_against_schema,
 )
@@ -3404,6 +3405,18 @@ async def tidy_apply(request: Request, state: AppState = Depends(get_state)):  #
                 )
             except OSError as exc:
                 logger.warning(f"schema.yaml not updated: {exc}")
+            # Same for measures.yaml: drop entries whose columns no
+            # longer exist after the reshape and seed a stub for the new
+            # value column.
+            try:
+                update_measures_yaml_for_apply(
+                    state.project_dir,
+                    suggestion=suggestion,
+                    result=result,
+                    create_if_absent=True,
+                )
+            except OSError as exc:
+                logger.warning(f"measures.yaml not updated: {exc}")
 
         # Re-introspect so the schema sidebar reflects the new long-form
         # object (and any rename/drop of the source).

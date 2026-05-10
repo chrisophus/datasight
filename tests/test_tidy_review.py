@@ -29,11 +29,13 @@ from datasight.cli import cli
 from datasight.tidy import ColumnMapping, Dimension, TidySuggestion
 from datasight.tidy_review import (
     PLAN_VERSION,
+    ApplyResult,
     SourceDisposition,
     apply_proposal,
     dump_plan,
     load_plan,
     resolve_source_disposition,
+    update_measures_yaml_for_apply,
     update_schema_yaml_for_apply,
     validate_against_schema,
 )
@@ -1737,6 +1739,197 @@ def test_update_schema_yaml_for_apply_keep_skips_duplicate_target(tmp_path):
     data = _read_schema_yaml(tmp_path)
     names = [t["name"] for t in data["tables"]]
     assert names == ["sales_wide", "sales_long"]
+
+
+# ---------------------------------------------------------------------------
+# update_measures_yaml_for_apply
+# ---------------------------------------------------------------------------
+
+
+def _measures_suggestion() -> TidySuggestion:
+    return TidySuggestion(
+        pattern="user_proposed",
+        table="sales_wide",
+        dimensions=[Dimension(name="year", kind="year", dtype="INTEGER")],
+        column_mappings=[
+            ColumnMapping(column="sales_2020", dimension_values={"year": "2020"}),
+            ColumnMapping(column="sales_2021", dimension_values={"year": "2021"}),
+        ],
+        id_columns=["region"],
+        value_column="sales",
+        target_object_name="sales_long",
+        rationale="",
+        reshape_sql="",
+    )
+
+
+def _apply_result(disposition: str, *, renamed_to: str | None = None) -> ApplyResult:
+    final_target = "sales_wide" if disposition == "replace" else "sales_long"
+    return ApplyResult(
+        table="sales_wide",
+        target_object_name="sales_long",
+        object_type="table",
+        affected_columns=["sales_2020", "sales_2021"],
+        row_count_source=10,
+        row_count_target=20,
+        source_disposition=disposition,
+        source_renamed_to=renamed_to,
+        final_target_name=final_target,
+        dry_run=False,
+    )
+
+
+def _read_measures_yaml(tmp_path):
+    import yaml
+
+    return yaml.safe_load((tmp_path / "measures.yaml").read_text(encoding="utf-8"))
+
+
+def test_update_measures_yaml_for_apply_keep_seeds_value_entry(tmp_path):
+    """`keep`: existing entries on the source stay; a stub for the long
+    form's value column is appended."""
+    (tmp_path / "measures.yaml").write_text(
+        "- table: sales_wide\n"
+        "  column: sales_2020\n"
+        "  default_aggregation: sum\n"
+        "- table: sales_wide\n"
+        "  column: sales_2021\n"
+        "  default_aggregation: sum\n",
+        encoding="utf-8",
+    )
+    rewrote = update_measures_yaml_for_apply(
+        str(tmp_path),
+        suggestion=_measures_suggestion(),
+        result=_apply_result("keep"),
+    )
+    assert rewrote is True
+    data = _read_measures_yaml(tmp_path)
+    keys = [(e["table"], e["column"]) for e in data]
+    assert keys == [
+        ("sales_wide", "sales_2020"),
+        ("sales_wide", "sales_2021"),
+        ("sales_long", "sales"),
+    ]
+    # Existing overrides are preserved verbatim.
+    assert data[0].get("default_aggregation") == "sum"
+
+
+def test_update_measures_yaml_for_apply_replace_drops_stale_entries(tmp_path):
+    """`replace`: source's mapped-column entries point at columns that no
+    longer exist on that table. They are removed and the value column
+    entry is seeded under the source's old name."""
+    (tmp_path / "measures.yaml").write_text(
+        "- table: sales_wide\n"
+        "  column: sales_2020\n"
+        "- table: sales_wide\n"
+        "  column: sales_2021\n"
+        "- table: customers\n"
+        "  column: lifetime_value\n",
+        encoding="utf-8",
+    )
+    rewrote = update_measures_yaml_for_apply(
+        str(tmp_path),
+        suggestion=_measures_suggestion(),
+        result=_apply_result("replace"),
+    )
+    assert rewrote is True
+    data = _read_measures_yaml(tmp_path)
+    keys = [(e["table"], e["column"]) for e in data]
+    assert keys == [
+        ("customers", "lifetime_value"),
+        ("sales_wide", "sales"),
+    ]
+
+
+def test_update_measures_yaml_for_apply_drop_seeds_at_target_name(tmp_path):
+    """`drop`: source's entries are removed; value entry seeded under the
+    long form's target name (source is gone)."""
+    (tmp_path / "measures.yaml").write_text(
+        "- table: sales_wide\n  column: sales_2020\n- table: sales_wide\n  column: sales_2021\n",
+        encoding="utf-8",
+    )
+    rewrote = update_measures_yaml_for_apply(
+        str(tmp_path),
+        suggestion=_measures_suggestion(),
+        result=_apply_result("drop"),
+    )
+    assert rewrote is True
+    data = _read_measures_yaml(tmp_path)
+    assert [(e["table"], e["column"]) for e in data] == [("sales_long", "sales")]
+
+
+def test_update_measures_yaml_for_apply_rename_rewrites_table_field(tmp_path):
+    """`rename`: source entries follow the renamed table; they target the
+    same columns (which still exist on the renamed table). Value entry
+    seeded on the new long-form table."""
+    (tmp_path / "measures.yaml").write_text(
+        "- table: sales_wide\n"
+        "  column: sales_2020\n"
+        "  default_aggregation: sum\n"
+        "- table: sales_wide\n"
+        "  column: sales_2021\n",
+        encoding="utf-8",
+    )
+    rewrote = update_measures_yaml_for_apply(
+        str(tmp_path),
+        suggestion=_measures_suggestion(),
+        result=_apply_result("rename", renamed_to="sales_wide_raw"),
+    )
+    assert rewrote is True
+    data = _read_measures_yaml(tmp_path)
+    keys = [(e["table"], e["column"]) for e in data]
+    assert keys == [
+        ("sales_wide_raw", "sales_2020"),
+        ("sales_wide_raw", "sales_2021"),
+        ("sales_long", "sales"),
+    ]
+    # Renamed entry preserves overrides.
+    assert data[0].get("default_aggregation") == "sum"
+
+
+def test_update_measures_yaml_for_apply_no_file_is_noop(tmp_path):
+    """No file, no opt-in: no-op (matches the schema.yaml CLI default)."""
+    rewrote = update_measures_yaml_for_apply(
+        str(tmp_path),
+        suggestion=_measures_suggestion(),
+        result=_apply_result("keep"),
+    )
+    assert rewrote is False
+    assert not (tmp_path / "measures.yaml").exists()
+
+
+def test_update_measures_yaml_for_apply_creates_file_when_opt_in(tmp_path):
+    """`create_if_absent=True` materializes a fresh measures.yaml with
+    just the value column stub — used by the web Apply path."""
+    rewrote = update_measures_yaml_for_apply(
+        str(tmp_path),
+        suggestion=_measures_suggestion(),
+        result=_apply_result("keep"),
+        create_if_absent=True,
+    )
+    assert rewrote is True
+    data = _read_measures_yaml(tmp_path)
+    assert data == [{"table": "sales_long", "column": "sales"}]
+    text = (tmp_path / "measures.yaml").read_text(encoding="utf-8")
+    assert text.startswith("# datasight measure overrides\n")
+
+
+def test_update_measures_yaml_for_apply_skips_duplicate_value_entry(tmp_path):
+    """Re-applying the same proposal shouldn't double-seed the value entry."""
+    (tmp_path / "measures.yaml").write_text(
+        "- table: sales_long\n  column: sales\n  default_aggregation: sum\n",
+        encoding="utf-8",
+    )
+    rewrote = update_measures_yaml_for_apply(
+        str(tmp_path),
+        suggestion=_measures_suggestion(),
+        result=_apply_result("keep"),
+    )
+    # Nothing changed: source had no entries to clean and value entry
+    # already exists.
+    assert rewrote is False
+    data = _read_measures_yaml(tmp_path)
+    assert data == [{"table": "sales_long", "column": "sales", "default_aggregation": "sum"}]
 
 
 def test_cli_review_replace_source_updates_schema_yaml(tmp_path):
