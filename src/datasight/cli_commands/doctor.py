@@ -46,7 +46,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write doctor output to a file instead of stdout.",
 )
-def doctor(project_dir, output_format, output_path):
+def doctor(project_dir, output_format, output_path):  # noqa: C901
     """Check project configuration, local files, and database connectivity.
 
     Use this when a project will not load, an API key is missing, a database

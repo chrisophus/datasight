@@ -43,7 +43,7 @@ _AUTO_IMPORT_MODES: dict[str, Literal["view", "table"]] = {
 _VALID_IMPORT_MODES = {"auto", "view", "table"}
 
 
-def detect_file_type(path: str) -> str | None:
+def detect_file_type(path: str) -> str | None:  # noqa: C901
     """Detect the type of a data file or directory.
 
     Parameters
@@ -187,7 +187,7 @@ def _browse_error(path_str: str, error: str) -> dict[str, Any]:
     }
 
 
-def browse_directory(
+def browse_directory(  # noqa: C901
     path: str | Path | None = None,
     *,
     max_entries: int = 500,
@@ -315,11 +315,13 @@ def resolve_import_mode(file_type: str, import_mode: ImportMode) -> Literal["vie
     if import_mode == "view" or import_mode == "table":
         return import_mode
     if import_mode != "auto":
-        raise ValueError(f"Unsupported import mode: {import_mode}")
+        msg = f"Unsupported import mode: {import_mode}"
+        raise ValueError(msg)
     try:
         return _AUTO_IMPORT_MODES[file_type]
     except KeyError as e:
-        raise ValueError(f"Unsupported import mode for file type: {file_type}") from e
+        msg = f"Unsupported import mode for file type: {file_type}"
+        raise ValueError(msg) from e
 
 
 def _select_from_file_sql(file_path: str, file_type: str, *, lenient: bool = False) -> str:
@@ -343,7 +345,8 @@ def _select_from_file_sql(file_path: str, file_type: str, *, lenient: bool = Fal
     if file_type == "csv_dir":
         glob_path = f"{escaped_path}/*.csv"
         return f"SELECT * FROM read_csv_auto('{glob_path}'{csv_opts})"
-    raise ValueError(f"Unknown file type: {file_type}")
+    msg = f"Unknown file type: {file_type}"
+    raise ValueError(msg)
 
 
 def create_relation_sql(
@@ -458,7 +461,8 @@ def _load_excel_workbook(
 
     sheets: dict[str, Any] = pd.read_excel(file_path, sheet_name=None)
     if not sheets:
-        raise ValueError(f"Excel file has no sheets: {file_path}")
+        msg = f"Excel file has no sheets: {file_path}"
+        raise ValueError(msg)
 
     single_sheet = len(sheets) == 1
     file_stem = Path(file_path).stem
@@ -564,7 +568,7 @@ def _attach_duckdb_file(
     return tables_info
 
 
-def create_ephemeral_session(
+def create_ephemeral_session(  # noqa: C901
     file_paths: list[str],
     import_mode: ImportMode = "auto",
 ) -> tuple[EphemeralDuckDBRunner, list[dict]]:
@@ -586,9 +590,11 @@ def create_ephemeral_session(
         If no valid files are found or view creation fails.
     """
     if not file_paths:
-        raise ConfigurationError("No file paths provided")
+        msg = "No file paths provided"
+        raise ConfigurationError(msg)
     if import_mode not in _VALID_IMPORT_MODES:
-        raise ConfigurationError(f"Unsupported import mode: {import_mode}")
+        msg = f"Unsupported import mode: {import_mode}"
+        raise ConfigurationError(msg)
 
     # Categorize files by type
     resolved_paths = [
@@ -629,12 +635,14 @@ def create_ephemeral_session(
 
             if not tables_info:
                 conn.close()
-                raise ConfigurationError(f"No tables found in {db_path}")
+                msg = f"No tables found in {db_path}"
+                raise ConfigurationError(msg)
 
             logger.info(f"Opened DuckDB directly: {db_path} ({len(tables_info)} tables)")
             return EphemeralDuckDBRunner(conn), tables_info
         except duckdb.Error as e:
-            raise ConfigurationError(f"Failed to open DuckDB file {db_path}: {e}") from e
+            msg = f"Failed to open DuckDB file {db_path}: {e}"
+            raise ConfigurationError(msg) from e
 
     # General case: create in-memory DB with imported relations
     conn = duckdb.connect(":memory:")
@@ -706,7 +714,7 @@ def create_ephemeral_session(
 _SPARK_SUPPORTED_TYPES = {"parquet", "hive_parquet", "csv", "csv_dir"}
 
 
-def create_spark_files_session(
+def create_spark_files_session(  # noqa: C901
     file_paths: list[str],
     *,
     spark_remote: str,
@@ -738,19 +746,22 @@ def create_spark_files_session(
         type Spark can't read (duckdb/sqlite).
     """
     if not file_paths:
-        raise ConfigurationError("No file paths provided")
+        msg = "No file paths provided"
+        raise ConfigurationError(msg)
 
     resolved: list[tuple[str, str]] = []
     for p in file_paths:
         abs_path = str(Path(p).resolve())
         ftype = detect_file_type(abs_path)
         if ftype is None:
-            raise ConfigurationError(f"Unrecognized or missing file: {p}")
+            msg = f"Unrecognized or missing file: {p}"
+            raise ConfigurationError(msg)
         if ftype not in _SPARK_SUPPORTED_TYPES:
-            raise ConfigurationError(
+            msg = (
                 f"Spark backend cannot read {ftype!r} files ({p}). "
                 "Use DuckDB mode, or re-export to Parquet."
             )
+            raise ConfigurationError(msg)
         resolved.append((abs_path, ftype))
 
     runner = SparkConnectRunner(
@@ -803,7 +814,8 @@ def _register_spark_view(spark: Any, view_name: str, path: str, file_type: str) 
     elif file_type in ("csv", "csv_dir"):
         df = reader.option("header", "true").option("inferSchema", "true").csv(path)
     else:
-        raise ConfigurationError(f"Unsupported Spark file type: {file_type}")
+        msg = f"Unsupported Spark file type: {file_type}"
+        raise ConfigurationError(msg)
     df.createOrReplaceTempView(view_name)
 
 
@@ -823,7 +835,8 @@ def create_files_session_for_settings(
       those backends can't read arbitrary local files.
     """
     if import_mode not in _VALID_IMPORT_MODES:
-        raise ConfigurationError(f"Unsupported import mode: {import_mode}")
+        msg = f"Unsupported import mode: {import_mode}"
+        raise ConfigurationError(msg)
     if settings is None:
         logger.info("File session: in-memory DuckDB (no settings / no .env)")
         return create_ephemeral_session(file_paths, import_mode=import_mode)
@@ -832,10 +845,11 @@ def create_files_session_for_settings(
         return create_ephemeral_session(file_paths, import_mode=import_mode)
     if settings.mode == "spark":
         if import_mode == "table":
-            raise ConfigurationError(
+            msg = (
                 "--import-mode=table is not supported when DB_MODE=spark; "
                 "Spark file sessions always register temp views."
             )
+            raise ConfigurationError(msg)
         logger.info(
             f"File session: Spark Connect at {settings.spark_remote} "
             f"(DB_MODE=spark, byte cap {settings.spark_max_result_bytes:,})"
@@ -854,7 +868,7 @@ def create_files_session_for_settings(
     return create_ephemeral_session(file_paths, import_mode=import_mode)
 
 
-def add_files_to_connection(
+def add_files_to_connection(  # noqa: C901
     conn: duckdb.DuckDBPyConnection,
     file_paths: list[str],
     existing_table_names: set[str],
@@ -884,7 +898,8 @@ def add_files_to_connection(
     errors: list[str] = []
     names = set(existing_table_names)
     if import_mode not in _VALID_IMPORT_MODES:
-        raise ConfigurationError(f"Unsupported import mode: {import_mode}")
+        msg = f"Unsupported import mode: {import_mode}"
+        raise ConfigurationError(msg)
 
     resolved_paths: list[tuple[str, str | None]] = []
     for path in file_paths:
@@ -982,7 +997,8 @@ def build_persistent_duckdb(
     db_path = Path(db_path).resolve()
     if db_path.exists():
         if not overwrite:
-            raise FileExistsError(f"Database already exists: {db_path}")
+            msg = f"Database already exists: {db_path}"
+            raise FileExistsError(msg)
         db_path.unlink()
     db_path.parent.mkdir(parents=True, exist_ok=True)
 

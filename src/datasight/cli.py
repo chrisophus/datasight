@@ -284,7 +284,7 @@ def write_or_print(text: str, output_path: str | None) -> None:
         click.echo(text)
 
 
-def render_profile_markdown(scope: str, profile_data: dict[str, Any]) -> str:
+def render_profile_markdown(scope: str, profile_data: dict[str, Any]) -> str:  # noqa: C901
     if scope == "dataset":
         lines = [
             "# Dataset Profile",
@@ -433,7 +433,7 @@ def render_doctor_markdown(project_dir: str, checks: list[dict[str, Any]]) -> st
     return "\n".join(lines)
 
 
-def render_quality_markdown(quality_data: dict[str, Any]) -> str:
+def render_quality_markdown(quality_data: dict[str, Any]) -> str:  # noqa: C901
     lines = [
         "# Dataset Quality Audit",
         "",
@@ -605,7 +605,7 @@ def render_recipes_markdown(recipes: list[dict[str, str]]) -> str:
     return "\n".join(lines).strip()
 
 
-def render_integrity_markdown(data: dict[str, Any]) -> str:
+def render_integrity_markdown(data: dict[str, Any]) -> str:  # noqa: C901
     lines = [
         "# Referential Integrity",
         "",
@@ -767,7 +767,8 @@ def load_recipe_entries(
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info = [table_info]
         recipes = await build_prompt_recipes(schema_info, sql_runner.run_sql, measure_overrides)
         return [{"id": idx, **recipe} for idx, recipe in enumerate(recipes, start=1)]
@@ -996,19 +997,18 @@ def validate_batch_entry(
 ) -> dict[str, str | None]:
     question = str(item.get("question") or "").strip()
     if not question:
-        raise click.ClickException(f"{label}: expected a mapping with 'question'.")
+        msg = f"{label}: expected a mapping with 'question'."
+        raise click.ClickException(msg)
 
     output_format = str(item.get("format") or "")
     if output_format and output_format not in {"table", "csv", "json"}:
-        raise click.ClickException(
-            f"{label}: invalid format {output_format!r}. Use table, csv, or json."
-        )
+        msg = f"{label}: invalid format {output_format!r}. Use table, csv, or json."
+        raise click.ClickException(msg)
 
     chart_format = str(item.get("chart_format") or "")
     if chart_format and chart_format not in {"html", "json", "png"}:
-        raise click.ClickException(
-            f"{label}: invalid chart_format {chart_format!r}. Use html, json, or png."
-        )
+        msg = f"{label}: invalid chart_format {chart_format!r}. Use html, json, or png."
+        raise click.ClickException(msg)
 
     return {
         "question": question,
@@ -1019,7 +1019,7 @@ def validate_batch_entry(
     }
 
 
-def load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
+def load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:  # noqa: C901
     path = Path(questions_file)
     suffix = path.suffix.lower()
 
@@ -1032,13 +1032,11 @@ def load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
             try:
                 item = json.loads(raw)
             except json.JSONDecodeError as exc:
-                raise click.ClickException(
-                    f"Invalid JSONL at line {line_number}: {exc.msg}"
-                ) from exc
+                msg = f"Invalid JSONL at line {line_number}: {exc.msg}"
+                raise click.ClickException(msg) from exc
             if not isinstance(item, dict):
-                raise click.ClickException(
-                    f"Invalid JSONL entry at line {line_number}: expected an object with 'question'."
-                )
+                msg = f"Invalid JSONL entry at line {line_number}: expected an object with 'question'."
+                raise click.ClickException(msg)
             entries.append(validate_batch_entry(item, label=f"JSONL line {line_number}"))
         return entries
 
@@ -1046,15 +1044,16 @@ def load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
         try:
             loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
         except yaml.YAMLError as exc:
-            raise click.ClickException(f"Invalid YAML: {exc}") from exc
+            msg = f"Invalid YAML: {exc}"
+            raise click.ClickException(msg) from exc
         if not isinstance(loaded, list):
-            raise click.ClickException("Structured YAML batch input must be a list of entries.")
+            msg = "Structured YAML batch input must be a list of entries."
+            raise click.ClickException(msg)
         entries = []
         for idx, item in enumerate(loaded, 1):
             if not isinstance(item, dict):
-                raise click.ClickException(
-                    f"Invalid YAML entry #{idx}: expected a mapping with 'question'."
-                )
+                msg = f"Invalid YAML entry #{idx}: expected a mapping with 'question'."
+                raise click.ClickException(msg)
             normalized_item = {str(key): value for key, value in item.items()}
             entries.append(validate_batch_entry(normalized_item, label=f"YAML entry #{idx}"))
         return entries
@@ -1072,7 +1071,7 @@ def load_batch_entries(questions_file: str) -> list[dict[str, str | None]]:
     ]
 
 
-def emit_ask_result(
+def emit_ask_result(  # noqa: C901
     result, output_format: str, chart_format: str | None, output_path: str | None
 ) -> None:
     from rich import box
@@ -1225,7 +1224,7 @@ def emit_cli_provenance(
     click.echo(json.dumps(provenance, indent=2))
 
 
-def write_batch_result_files(
+def write_batch_result_files(  # noqa: C901
     *,
     output_dir: str | None,
     index: int,

@@ -64,7 +64,7 @@ from datasight.cli_helpers import format_epilog
     help="Write an example validation.yaml to the project directory and exit.",
 )
 @click.option("--overwrite", is_flag=True, help="Overwrite an existing validation.yaml.")
-def validate(project_dir, table, config_path, output_format, output_path, scaffold, overwrite):
+def validate(project_dir, table, config_path, output_format, output_path, scaffold, overwrite):  # noqa: C901
     """Run declarative validation rules against the database.
 
     Rules live in validation.yaml. Use --scaffold to create a starter file,

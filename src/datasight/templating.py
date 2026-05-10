@@ -38,7 +38,8 @@ def _load_template(name: str) -> str:
     """
     path = _TEMPLATES_DIR / f"{name}.mustache"
     if not path.exists():
-        raise FileNotFoundError(f"Template not found: {path}")
+        msg = f"Template not found: {path}"
+        raise FileNotFoundError(msg)
     return path.read_text(encoding="utf-8")
 
 

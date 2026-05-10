@@ -56,7 +56,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Output format (default: inferred from file extension).",
 )
-def audit_report(project_dir, table, output_path, output_format):
+def audit_report(project_dir, table, output_path, output_format):  # noqa: C901
     """Generate a comprehensive audit report combining all checks.
 
     Combines profile, measures, quality, integrity, distribution, and
@@ -92,7 +92,8 @@ def audit_report(project_dir, table, output_path, output_format):
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info_filtered = [table_info]
         else:
             schema_info_filtered = schema_info

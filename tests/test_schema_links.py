@@ -22,7 +22,8 @@ from datasight.schema_links import (
 def _stub_fetcher(mapping: dict[str, str]) -> Callable[[str], Awaitable[str]]:
     async def _fetch(url: str) -> str:
         if url not in mapping:
-            raise RuntimeError(f"no stub for {url}")
+            msg = f"no stub for {url}"
+            raise RuntimeError(msg)
         return mapping[url]
 
     return _fetch
@@ -74,7 +75,8 @@ async def test_fetch_failure_preserves_original_directive():
     md = "Ref: [include:Broken](https://bad.example) end."
 
     async def _fetch(url: str) -> str:
-        raise RuntimeError("boom")
+        msg = "boom"
+        raise RuntimeError(msg)
 
     result = await resolve_schema_description_links(md, fetcher=_fetch)
     assert "[include:Broken](https://bad.example)" in result
@@ -86,7 +88,8 @@ async def test_partial_failure_mixes_expanded_and_preserved():
 
     async def _fetch(url: str) -> str:
         if "fail" in url:
-            raise RuntimeError("network down")
+            msg = "network down"
+            raise RuntimeError(msg)
         return "good body"
 
     result = await resolve_schema_description_links(md, fetcher=_fetch)
@@ -155,7 +158,8 @@ async def test_max_bytes_zero_skips_resolution():
     md = "See [include:Foo](https://example.com/foo) for details."
 
     async def _fetch(url: str) -> str:
-        raise AssertionError("fetcher should not run when max_bytes=0")
+        msg = "fetcher should not run when max_bytes=0"
+        raise AssertionError(msg)
 
     result = await resolve_schema_description_links(md, fetcher=_fetch, max_bytes=0)
     assert result == md

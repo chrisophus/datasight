@@ -56,7 +56,8 @@ class _ADBCRunner:
 
     def get_table_names(self) -> list[str]:
         if self._raises:
-            raise RuntimeError("ADBC boom")
+            msg = "ADBC boom"
+            raise RuntimeError(msg)
         return list(self._tables or [])
 
 
@@ -193,7 +194,8 @@ async def test_get_row_count_returns_none_on_type_error():
 @pytest.mark.asyncio
 async def test_get_row_count_handles_run_sql_exception():
     async def run_sql(sql: str) -> pd.DataFrame:
-        raise RuntimeError("boom")
+        msg = "boom"
+        raise RuntimeError(msg)
 
     # _run wraps the exception and returns empty DataFrame -> None
     assert await _get_row_count(run_sql, "t") is None

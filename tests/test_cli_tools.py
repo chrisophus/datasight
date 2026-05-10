@@ -263,7 +263,8 @@ def test_measure_overview_infers_energy_aggregations():
     ]
 
     async def fake_run_sql(sql):  # noqa: ARG001
-        raise AssertionError("measure inference should not query the database")
+        msg = "measure inference should not query the database"
+        raise AssertionError(msg)
 
     data = asyncio.run(build_measure_overview(schema_info, fake_run_sql))
     measures = {item["column"]: item for item in data["measures"]}
@@ -324,7 +325,8 @@ def test_measure_overview_applies_project_override():
     ]
 
     async def fake_run_sql(sql):  # noqa: ARG001
-        raise AssertionError("measure inference should not query the database")
+        msg = "measure inference should not query the database"
+        raise AssertionError(msg)
 
     data = asyncio.run(build_measure_overview(schema_info, fake_run_sql, overrides))
     measure = next(item for item in data["measures"] if item["column"] == "demand_mw")
@@ -359,7 +361,8 @@ def test_measure_overview_includes_calculated_project_measure():
     ]
 
     async def fake_run_sql(sql):  # noqa: ARG001
-        raise AssertionError("measure inference should not query the database")
+        msg = "measure inference should not query the database"
+        raise AssertionError(msg)
 
     data = asyncio.run(build_measure_overview(schema_info, fake_run_sql, overrides))
     measure = next(item for item in data["measures"] if item["column"] == "net_load_mw")
@@ -395,7 +398,8 @@ def test_measure_overview_applies_display_and_chart_metadata():
     ]
 
     async def fake_run_sql(sql):  # noqa: ARG001
-        raise AssertionError("measure inference should not query the database")
+        msg = "measure inference should not query the database"
+        raise AssertionError(msg)
 
     data = asyncio.run(build_measure_overview(schema_info, fake_run_sql, overrides))
     measure = next(item for item in data["measures"] if item["column"] == "net_generation_mwh")
@@ -662,7 +666,8 @@ def test_trend_overview_uses_semantic_measure_aggregation():
             return pd.DataFrame([{"distinct_count": 3, "null_count": 0}])
         if "GROUP BY 1 ORDER BY COUNT(*) DESC" in sql:
             return pd.DataFrame([{"value": "BA1"}, {"value": "BA2"}])
-        raise AssertionError(f"unexpected SQL in test: {sql}")
+        msg = f"unexpected SQL in test: {sql}"
+        raise AssertionError(msg)
 
     data = asyncio.run(build_trend_overview(schema_info, fake_run_sql))
     candidates = {item["measure_column"]: item for item in data["trend_candidates"]}
@@ -698,7 +703,8 @@ def test_trend_overview_uses_weighted_average_for_rate_metrics():
             return pd.DataFrame(
                 [{"min_value": "2024-01-01 00:00:00", "max_value": "2024-01-02 00:00:00"}]
             )
-        raise AssertionError(f"unexpected SQL in test: {sql}")
+        msg = f"unexpected SQL in test: {sql}"
+        raise AssertionError(msg)
 
     data = asyncio.run(build_trend_overview(schema_info, fake_run_sql))
     candidate = next(
@@ -747,7 +753,8 @@ def test_trend_overview_prefers_configured_chart_type_and_display_name():
             return pd.DataFrame(
                 [{"min_value": "2024-01-01 00:00:00", "max_value": "2024-01-02 00:00:00"}]
             )
-        raise AssertionError(f"unexpected SQL in test: {sql}")
+        msg = f"unexpected SQL in test: {sql}"
+        raise AssertionError(msg)
 
     data = asyncio.run(build_trend_overview(schema_info, fake_run_sql, overrides))
     chart = next(
@@ -781,7 +788,8 @@ def test_prompt_recipes_include_rollup_sql_for_semantic_measure():
             return pd.DataFrame(
                 [{"min_value": "2024-01-01 00:00:00", "max_value": "2024-01-02 00:00:00"}]
             )
-        raise AssertionError(f"unexpected SQL in test: {sql}")
+        msg = f"unexpected SQL in test: {sql}"
+        raise AssertionError(msg)
 
     recipes = asyncio.run(build_prompt_recipes(schema_info, fake_run_sql))
     joined = "\n".join(item["prompt"] for item in recipes)
@@ -2105,7 +2113,7 @@ def test_run_ask_pipeline_includes_measure_guidance_in_prompt(monkeypatch, proje
     assert captured["system_prompt"] == "PROMPT"
 
 
-def test_run_ask_pipeline_uses_measure_semantics_for_energy_power_weighted_and_calculated(
+def test_run_ask_pipeline_uses_measure_semantics_for_energy_power_weighted_and_calculated(  # noqa: C901
     monkeypatch, project_dir
 ):
     import asyncio
@@ -2121,7 +2129,7 @@ def test_run_ask_pipeline_uses_measure_semantics_for_energy_power_weighted_and_c
             return pd.DataFrame([{"value": 1}])
 
     class SemanticAwareFakeClient:
-        async def create_message(self, *, system, messages, **kwargs):  # noqa: ARG002
+        async def create_message(self, *, system, messages, **kwargs):  # noqa: ARG002, C901
             last_message = messages[-1]["content"]
             if isinstance(last_message, str):
                 question = last_message.lower()
@@ -2157,7 +2165,8 @@ def test_run_ask_pipeline_uses_measure_semantics_for_energy_power_weighted_and_c
                         "FROM generation_hourly GROUP BY 1 ORDER BY 1"
                     )
                 else:
-                    raise AssertionError(f"unexpected question: {question}")
+                    msg = f"unexpected question: {question}"
+                    raise AssertionError(msg)
 
                 if "generation" in question:
                     assert "generation_hourly.net_generation_mwh: role=energy" in system

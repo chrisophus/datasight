@@ -50,7 +50,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the dimension overview to a file instead of stdout.",
 )
-def dimensions(project_dir, table, output_format, output_path):
+def dimensions(project_dir, table, output_format, output_path):  # noqa: C901
     """Surface likely grouping dimensions and category breakdowns.
 
     Use this to find text/code columns that are good GROUP BY candidates,
@@ -70,7 +70,8 @@ def dimensions(project_dir, table, output_format, output_path):
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info = [table_info]
         return await build_dimension_overview(schema_info, sql_runner.run_sql)
 

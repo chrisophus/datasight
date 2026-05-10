@@ -267,7 +267,8 @@ async def test_uniqueness_missing_column_returns_zero_dup_groups():
     """_run_scalar swallows the error — treated as no duplicates."""
 
     async def run_sql(sql):
-        raise RuntimeError("SQL fails")
+        msg = "SQL fails"
+        raise RuntimeError(msg)
 
     rules = [{"table": "t", "rules": [{"type": "uniqueness", "columns": ["missing"]}]}]
     report = await build_validation_report(_schema(), run_sql, rules)

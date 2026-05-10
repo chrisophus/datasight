@@ -195,7 +195,7 @@ def _build_special_pattern(name: str) -> re.Pattern[str]:
     )
 
 
-def quote_mixed_case_identifiers(sql: str, case_map: dict[str, str]) -> str:
+def quote_mixed_case_identifiers(sql: str, case_map: dict[str, str]) -> str:  # noqa: C901
     """Rewrite ``sql`` so that references to identifiers listed in
     ``case_map`` are emitted with double quotes and their original casing.
 

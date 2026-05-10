@@ -47,7 +47,8 @@ async def test_sample_enum_columns_handles_query_exception():
     """If a query throws, the column is skipped silently."""
 
     async def run_sql(sql):
-        raise RuntimeError("boom")
+        msg = "boom"
+        raise RuntimeError(msg)
 
     tables = [
         TableInfo(

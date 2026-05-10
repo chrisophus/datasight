@@ -54,7 +54,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the distribution profile to a file instead of stdout.",
 )
-def distribution(project_dir, table, column, output_format, output_path):
+def distribution(project_dir, table, column, output_format, output_path):  # noqa: C901
     """Profile value distributions - percentiles, outliers, and measure flags.
 
     Use this to inspect numeric ranges, skew, zero/negative rates, outliers,
@@ -82,7 +82,8 @@ def distribution(project_dir, table, column, output_format, output_path):
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info_filtered = [table_info]
         else:
             schema_info_filtered = schema_info

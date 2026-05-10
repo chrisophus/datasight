@@ -56,7 +56,7 @@ def _format_provenance_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]
     return formatted
 
 
-def _group_events_into_blocks(
+def _group_events_into_blocks(  # noqa: C901
     events: list[dict[str, Any]],
     exclude_indices: set[int],
 ) -> list[dict[str, Any]]:
@@ -255,13 +255,14 @@ def normalize_bundle_includes(include: list[str] | set[str] | None) -> list[str]
         key = aliases.get(str(item).strip().lower(), str(item).strip().lower())
         if key not in BUNDLE_INCLUDE_CHOICES:
             valid = ", ".join(BUNDLE_INCLUDE_CHOICES)
-            raise ValueError(f"Unknown bundle artifact {item!r}. Valid choices: {valid}.")
+            msg = f"Unknown bundle artifact {item!r}. Valid choices: {valid}."
+            raise ValueError(msg)
         if key not in normalized:
             normalized.append(key)
     return normalized
 
 
-def _group_events_into_turns(
+def _group_events_into_turns(  # noqa: C901
     events: list[dict[str, Any]],
     exclude_indices: set[int],
 ) -> list[dict[str, Any]]:
@@ -270,11 +271,11 @@ def _group_events_into_turns(
     Each returned turn is::
 
         {
-            "index": int,                 # 0-based turn index
+            "index": int,  # 0-based turn index
             "question": str,
-            "intro_texts": list[str],     # assistant text blocks before tools
-            "final_texts": list[str],     # assistant text blocks after tools
-            "tool_calls": list[ToolCall], # SQL / chart calls in order
+            "intro_texts": list[str],  # assistant text blocks before tools
+            "final_texts": list[str],  # assistant text blocks after tools
+            "tool_calls": list[ToolCall],  # SQL / chart calls in order
         }
 
     The agent can emit multiple ``ASSISTANT_MESSAGE`` events per phase (one per
@@ -368,7 +369,7 @@ def _group_events_into_turns(
     return turns
 
 
-def _group_events_for_bundle(
+def _group_events_for_bundle(  # noqa: C901
     events: list[dict[str, Any]],
     exclude_indices: set[int],
 ) -> list[dict[str, Any]]:
@@ -669,7 +670,7 @@ def _build_bundle_metadata(
     return manifest, metadata
 
 
-def export_session_bundle(
+def export_session_bundle(  # noqa: C901
     events: list[dict[str, Any]],
     *,
     title: str = "datasight session",
@@ -793,7 +794,7 @@ def _extract_plotly_spec(srcdoc: str) -> dict[str, Any] | None:
     return None
 
 
-def _build_dashboard_cards(
+def _build_dashboard_cards(  # noqa: C901
     items: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build card data and chart specs for dashboard export.

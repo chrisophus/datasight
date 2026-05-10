@@ -59,7 +59,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the profile output to a file instead of stdout.",
 )
-def profile(project_dir, table, column, output_format, output_path):
+def profile(project_dir, table, column, output_format, output_path):  # noqa: C901
     """Profile your dataset - row counts, date coverage, and column statistics.
 
     Use this before asking questions to understand table sizes, candidate
@@ -83,14 +83,17 @@ def profile(project_dir, table, column, output_format, output_path):
 
         if column:
             if "." not in column:
-                raise click.ClickException("--column must be in table.column form.")
+                msg = "--column must be in table.column form."
+                raise click.ClickException(msg)
             table_name, column_name = column.split(".", 1)
             table_info = find_table_info(schema_info, table_name)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table_name}")
+                msg = f"Table not found: {table_name}"
+                raise click.ClickException(msg)
             column_info = find_column_info(table_info, column_name)
             if column_info is None:
-                raise click.ClickException(f"Column not found: {column}")
+                msg = f"Column not found: {column}"
+                raise click.ClickException(msg)
             return "column", await build_column_profile(
                 table_info, column_info, sql_runner.run_sql
             )
@@ -98,7 +101,8 @@ def profile(project_dir, table, column, output_format, output_path):
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             return "table", await build_table_profile(table_info, sql_runner.run_sql)
 
         return "dataset", await build_dataset_overview(schema_info, sql_runner.run_sql)

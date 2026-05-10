@@ -300,7 +300,8 @@ def test_enable_ansi_quoted_identifiers_warns_but_does_not_raise(caplog):
 
     class _RejectingConf:
         def set(self, *_args, **_kwargs):
-            raise RuntimeError("config locked by admin")
+            msg = "config locked by admin"
+            raise RuntimeError(msg)
 
     spark = _FakeSpark([])
     spark.conf = _RejectingConf()
@@ -350,7 +351,8 @@ def test_probe_connection_propagates_handshake_error():
     class _RejectingSpark:
         @property
         def version(self):
-            raise RuntimeError("UNAUTHENTICATED: invalid token")
+            msg = "UNAUTHENTICATED: invalid token"
+            raise RuntimeError(msg)
 
     from datasight.exceptions import ConnectionError as _ConnErr
 
@@ -465,7 +467,8 @@ async def test_introspect_schema_skips_row_count_for_spark(monkeypatch):
         return pd.DataFrame()
 
     async def _count_boom(*args, **kwargs):  # pragma: no cover - must not run
-        raise AssertionError("_get_row_count must not be called for Spark runner")
+        msg = "_get_row_count must not be called for Spark runner"
+        raise AssertionError(msg)
 
     monkeypatch.setattr(schema_mod, "_get_row_count", _count_boom)
 

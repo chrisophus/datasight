@@ -87,7 +87,7 @@ def _find_measure_rule(
     return None
 
 
-def _validate_measure_aggregations(
+def _validate_measure_aggregations(  # noqa: C901
     tree: "exp.Expression",
     measure_rules: dict[tuple[str, str], MeasureAggregationRule],
 ) -> list[str]:
@@ -134,7 +134,7 @@ def _validate_measure_aggregations(
     return errors
 
 
-def validate_sql(
+def validate_sql(  # noqa: C901
     sql: str,
     schema: dict[str, set[str]],
     dialect: str = "duckdb",

@@ -198,7 +198,8 @@ def test_propose_emits_llm_error_event_on_provider_failure(loaded_state, monkeyp
     """If the LLM call raises, the stream emits llm_error then done."""
 
     async def boom(*args, **kwargs):  # noqa: ARG001
-        raise RuntimeError("provider-down")
+        msg = "provider-down"
+        raise RuntimeError(msg)
 
     monkeypatch.setattr(web_app, "propose_reshapes", boom)
 

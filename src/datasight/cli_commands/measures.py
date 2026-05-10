@@ -56,7 +56,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the measure overview to a file instead of stdout.",
 )
-def measures(project_dir, table, scaffold, overwrite, output_format, output_path):
+def measures(project_dir, table, scaffold, overwrite, output_format, output_path):  # noqa: C901
     """Surface likely measures and default aggregations.
 
     Measures are numeric columns that should usually be summed, averaged,
@@ -79,7 +79,8 @@ def measures(project_dir, table, scaffold, overwrite, output_format, output_path
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info = [table_info]
         return await build_measure_overview(schema_info, sql_runner.run_sql, measure_overrides)
 

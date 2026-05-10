@@ -114,7 +114,7 @@ def _has_color(container: Any, key: str = "color") -> bool:
     return isinstance(container, dict) and key in container and container[key] not in (None, "")
 
 
-def apply_consistent_category_colors(spec: dict[str, Any]) -> dict[str, Any]:
+def apply_consistent_category_colors(spec: dict[str, Any]) -> dict[str, Any]:  # noqa: C901
     """Add deterministic colors to Plotly traces where no color is explicit."""
     for trace in spec.get("data", []):
         if not isinstance(trace, dict):
@@ -824,7 +824,7 @@ class AgentResult:
 DEFAULT_MAX_TOKENS: int = 4096
 
 
-async def run_agent_loop(
+async def run_agent_loop(  # noqa: C901
     *,
     question: str,
     llm_client: LLMClient,

@@ -262,7 +262,8 @@ def test_chat_llm_error_emits_error_event(isolated_web_state: None, project_dir:
         async def create_message(self, **kwargs):  # noqa: ARG002
             from datasight.exceptions import LLMError
 
-            raise LLMError("rate limited")
+            msg = "rate limited"
+            raise LLMError(msg)
 
     with TestClient(web_app.app) as client:
         client.post("/api/projects/load", json={"path": project_dir})

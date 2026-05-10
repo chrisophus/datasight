@@ -260,7 +260,8 @@ class TidySuggestion:
     def build_sql(self, mode: str = "table") -> str:
         """Return DDL that materializes this suggestion as a table or view."""
         if mode not in ("view", "table"):
-            raise ValueError(f"mode must be 'view' or 'table', got {mode!r}")
+            msg = f"mode must be 'view' or 'table', got {mode!r}"
+            raise ValueError(msg)
         return _build_reshape_sql(
             self.table,
             self.id_columns,
@@ -475,7 +476,8 @@ def _build_reshape_sql(
       (DuckDB 1.5.2 has no INCLUDE NULLS clause).
     """
     if mode not in ("view", "table"):
-        raise ValueError(f"mode must be 'view' or 'table', got {mode!r}")
+        msg = f"mode must be 'view' or 'table', got {mode!r}"
+        raise ValueError(msg)
     if len(dimensions) == 1 and mode == "table" and not include_nulls:
         return _build_unpivot_sql(
             table,

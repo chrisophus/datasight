@@ -744,7 +744,8 @@ def test_generate_db_preflight_runs_before_llm_call(tmp_path, parquet_file, monk
 
     def _unreachable(**kwargs):
         called["n"] += 1
-        raise AssertionError("LLM should not be called when preflight rejects the run")
+        msg = "LLM should not be called when preflight rejects the run"
+        raise AssertionError(msg)
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     monkeypatch.setattr("datasight.cli.create_llm_client", _unreachable)

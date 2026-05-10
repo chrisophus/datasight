@@ -61,7 +61,7 @@ def config_init(overwrite: bool):
 
 
 @click.command(name="show")
-def config_show():
+def config_show():  # noqa: C901
     """Show the resolved datasight configuration and where it loaded from."""
     from dotenv import load_dotenv
 

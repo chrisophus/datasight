@@ -251,7 +251,7 @@ class AnthropicLLMClient:
         # api_key shape) and propagates directly to the caller.
         self._client = anthropic.AsyncAnthropic(**kwargs)
 
-    async def create_message(
+    async def create_message(  # noqa: C901
         self,
         *,
         model: str,
@@ -305,13 +305,13 @@ class AnthropicLLMClient:
                 # Auth failures are a configuration problem, not a transient
                 # API error — retrying won't fix a missing/invalid key.
                 logger.exception("Anthropic authentication error")
-                raise ConfigurationError(
-                    f"Anthropic authentication failed — check ANTHROPIC_API_KEY: {e}"
-                ) from e
+                msg = f"Anthropic authentication failed — check ANTHROPIC_API_KEY: {e}"
+                raise ConfigurationError(msg) from e
             except anthropic.APIConnectionError as e:
                 if is_last:
                     logger.exception("Anthropic connection error (final attempt)")
-                    raise LLMConnectionError(f"Failed to connect to Anthropic API: {e}") from e
+                    msg = f"Failed to connect to Anthropic API: {e}"
+                    raise LLMConnectionError(msg) from e
                 retries += 1
                 delay = DEFAULT_RETRY_BASE_DELAY * (2**attempt)
                 logger.warning(
@@ -323,7 +323,8 @@ class AnthropicLLMClient:
             except anthropic.RateLimitError as e:
                 if is_last:
                     logger.exception("Anthropic rate limit error (final attempt)")
-                    raise LLMResponseError(f"Anthropic rate limit exceeded: {e}") from e
+                    msg = f"Anthropic rate limit exceeded: {e}"
+                    raise LLMResponseError(msg) from e
                 retries += 1
                 delay = DEFAULT_RETRY_BASE_DELAY * (2**attempt)
                 logger.warning(
@@ -335,7 +336,8 @@ class AnthropicLLMClient:
             except anthropic.InternalServerError as e:
                 if is_last:
                     logger.exception("Anthropic 5xx error (final attempt)")
-                    raise LLMResponseError(f"Anthropic API error: {e}") from e
+                    msg = f"Anthropic API error: {e}"
+                    raise LLMResponseError(msg) from e
                 retries += 1
                 delay = DEFAULT_RETRY_BASE_DELAY * (2**attempt)
                 logger.warning(
@@ -351,9 +353,8 @@ class AnthropicLLMClient:
                 ) from e
 
         if response is None:
-            raise LLMResponseError(
-                "Anthropic client exhausted retries without returning a response"
-            )
+            msg = "Anthropic client exhausted retries without returning a response"
+            raise LLMResponseError(msg)
 
         content: list[ContentBlock] = []
         for block in response.content:
@@ -436,7 +437,7 @@ def _convert_tools_to_openai(tools: list[dict[str, Any]]) -> list[dict[str, Any]
     return result
 
 
-def _convert_messages_to_openai(
+def _convert_messages_to_openai(  # noqa: C901
     system: str, messages: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """Convert Anthropic message format to OpenAI chat format."""
@@ -547,19 +548,21 @@ class _OpenAICompatibleClient:
             import openai
             from openai import AsyncOpenAI
         except ImportError as e:
-            raise ImportError(
+            msg = (
                 "The 'openai' package is required for this provider. "
                 "Install it with: pip install openai"
-            ) from e
+            )
+            raise ImportError(msg) from e
         # Stash typed exception classes so the retry loop can catch them
         # without repeating the lazy import on every attempt.
         self._openai = openai
         try:
             self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=timeout)
         except openai.OpenAIError as e:
-            raise LLMConnectionError(f"Failed to initialize OpenAI client: {e}") from e
+            msg = f"Failed to initialize OpenAI client: {e}"
+            raise LLMConnectionError(msg) from e
 
-    async def create_message(
+    async def create_message(  # noqa: C901
         self,
         *,
         model: str,
@@ -606,9 +609,8 @@ class _OpenAICompatibleClient:
                 # AuthenticationError is a subclass of APIStatusError so this
                 # branch must come before the generic status-error branch.
                 logger.exception("OpenAI-compatible authentication error")
-                raise ConfigurationError(
-                    f"Authentication failed — check the API key for this provider: {e}"
-                ) from e
+                msg = f"Authentication failed — check the API key for this provider: {e}"
+                raise ConfigurationError(msg) from e
             except oa.APITimeoutError as e:
                 # ``APITimeoutError`` is a subclass of ``APIConnectionError``,
                 # so this specific branch must come first when subclasses
@@ -616,7 +618,8 @@ class _OpenAICompatibleClient:
                 # that's slow on this call will also be slow on the retry).
                 if is_last or not self._retry_on_timeout:
                     logger.exception("OpenAI-compatible API timeout (final attempt)")
-                    raise LLMConnectionError(f"API request timed out: {e}") from e
+                    msg = f"API request timed out: {e}"
+                    raise LLMConnectionError(msg) from e
                 retries += 1
                 delay = DEFAULT_RETRY_BASE_DELAY * (2**attempt)
                 logger.warning(
@@ -628,7 +631,8 @@ class _OpenAICompatibleClient:
             except oa.APIConnectionError as e:
                 if is_last:
                     logger.exception("OpenAI-compatible connection error (final attempt)")
-                    raise LLMConnectionError(f"API request failed: {e}") from e
+                    msg = f"API request failed: {e}"
+                    raise LLMConnectionError(msg) from e
                 retries += 1
                 delay = DEFAULT_RETRY_BASE_DELAY * (2**attempt)
                 logger.warning(
@@ -640,7 +644,8 @@ class _OpenAICompatibleClient:
             except oa.RateLimitError as e:
                 if is_last:
                     logger.exception("OpenAI-compatible rate limit (final attempt)")
-                    raise LLMResponseError(f"API rate limit exceeded: {e}") from e
+                    msg = f"API rate limit exceeded: {e}"
+                    raise LLMResponseError(msg) from e
                 retries += 1
                 delay = DEFAULT_RETRY_BASE_DELAY * (2**attempt)
                 logger.warning(
@@ -652,7 +657,8 @@ class _OpenAICompatibleClient:
             except oa.InternalServerError as e:
                 if is_last:
                     logger.exception("OpenAI-compatible 5xx error (final attempt)")
-                    raise LLMResponseError(f"API server error: {e}") from e
+                    msg = f"API server error: {e}"
+                    raise LLMResponseError(msg) from e
                 retries += 1
                 delay = DEFAULT_RETRY_BASE_DELAY * (2**attempt)
                 logger.warning(
@@ -666,9 +672,8 @@ class _OpenAICompatibleClient:
                 raise LLMResponseError(_augment_if_context_overflow(f"API error: {e}")) from e
 
         if response is None:
-            raise LLMResponseError(
-                "OpenAI-compatible client exhausted retries without returning a response"
-            )
+            msg = "OpenAI-compatible client exhausted retries without returning a response"
+            raise LLMResponseError(msg)
 
         choice = response.choices[0]
         content: list[ContentBlock] = []
@@ -931,13 +936,15 @@ def create_llm_client(
     """
     spec = _PROVIDERS.get(provider)
     if spec is None:
-        raise ValueError(f"Unknown LLM provider: {provider}")
+        msg = f"Unknown LLM provider: {provider}"
+        raise ValueError(msg)
 
     if spec.api_key_env is not None and not api_key:
-        raise ConfigurationError(
+        msg = (
             f"No API key configured for provider {provider!r}. "
             f"Set {spec.api_key_env} or configure the LLM connection."
         )
+        raise ConfigurationError(msg)
 
     url = base_url or spec.default_base_url
     model_suffix = f" (model={model})" if model else ""
@@ -960,4 +967,5 @@ def create_llm_client(
         case "anthropic":
             return AnthropicLLMClient(api_key=api_key, base_url=url, timeout=timeout)
         case _:  # pragma: no cover — guarded by _PROVIDERS lookup above
-            raise ValueError(f"Unknown LLM provider: {provider}")
+            msg = f"Unknown LLM provider: {provider}"
+            raise ValueError(msg)

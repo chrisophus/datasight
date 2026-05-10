@@ -199,7 +199,8 @@ async def test_build_distribution_overview(energy_conn):
 @pytest.mark.asyncio
 async def test_build_distribution_overview_empty_schema():
     async def run_sql(sql):
-        raise AssertionError("should not be called")
+        msg = "should not be called"
+        raise AssertionError(msg)
 
     result = await build_distribution_overview([], run_sql)
     assert result["distributions"] == []

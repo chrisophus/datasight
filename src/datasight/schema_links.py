@@ -181,27 +181,34 @@ async def _validate_url_safety(url: str) -> None:
 
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
-        raise ValueError(f"unsupported url scheme {parsed.scheme!r}")
+        msg = f"unsupported url scheme {parsed.scheme!r}"
+        raise ValueError(msg)
     hostname = (parsed.hostname or "").lower()
     if not hostname:
-        raise ValueError("url has no hostname")
+        msg = "url has no hostname"
+        raise ValueError(msg)
     if hostname in _BLOCKED_LITERAL_HOSTNAMES:
-        raise ValueError(f"hostname {hostname!r} is blocked")
+        msg = f"hostname {hostname!r} is blocked"
+        raise ValueError(msg)
     if any(hostname.endswith(suffix) for suffix in _BLOCKED_HOSTNAME_SUFFIXES):
-        raise ValueError(f"hostname {hostname!r} is blocked")
+        msg = f"hostname {hostname!r} is blocked"
+        raise ValueError(msg)
     if _is_disallowed_ip(hostname):
-        raise ValueError(f"hostname {hostname!r} resolves to a disallowed address")
+        msg = f"hostname {hostname!r} resolves to a disallowed address"
+        raise ValueError(msg)
 
     # Resolve and reject any A/AAAA that points into a private range.
     loop = asyncio.get_running_loop()
     try:
         infos = await loop.getaddrinfo(hostname, None)
     except socket.gaierror as e:
-        raise ValueError(f"failed to resolve {hostname!r}: {e}") from e
+        msg = f"failed to resolve {hostname!r}: {e}"
+        raise ValueError(msg) from e
     for _family, _type, _proto, _canon, sockaddr in infos:
         addr = sockaddr[0]
         if _is_disallowed_ip(addr):
-            raise ValueError(f"{hostname!r} resolves to disallowed address {addr!r}")
+            msg = f"{hostname!r} resolves to disallowed address {addr!r}"
+            raise ValueError(msg)
 
 
 async def _default_fetch(url: str, *, timeout: float, max_bytes: int) -> str:
@@ -228,16 +235,18 @@ async def _default_fetch(url: str, *, timeout: float, max_bytes: int) -> str:
         async with client.stream("GET", url) as response:
             if 300 <= response.status_code < 400:
                 location = response.headers.get("location", "")
-                raise ValueError(
+                msg = (
                     f"redirect ({response.status_code}) to {location!r} is not followed; "
                     "use the final URL directly"
                 )
+                raise ValueError(msg)
             response.raise_for_status()
             content_type = (
                 response.headers.get("content-type", "").lower().split(";", 1)[0].strip()
             )
             if not any(content_type.startswith(p) for p in _ALLOWED_CONTENT_PREFIXES):
-                raise ValueError(f"unsupported content-type {content_type!r}")
+                msg = f"unsupported content-type {content_type!r}"
+                raise ValueError(msg)
 
             buffer = bytearray()
             async for chunk in response.aiter_bytes():
@@ -304,7 +313,7 @@ async def resolve_schema_description_links(
     pass
 
 
-async def resolve_schema_description_links(
+async def resolve_schema_description_links(  # noqa: C901
     markdown: str | None,
     *,
     fetcher: Fetcher | None = None,

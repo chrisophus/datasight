@@ -369,7 +369,8 @@ async def test_run_single_verification_outer_exception(monkeypatch):
 
     class Boom:
         async def create_message(self, **kwargs):
-            raise RuntimeError("kaboom")
+            msg = "kaboom"
+            raise RuntimeError(msg)
 
     async def _run(sql: str) -> pd.DataFrame:
         return pd.DataFrame()

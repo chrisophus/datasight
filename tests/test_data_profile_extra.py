@@ -243,7 +243,8 @@ def test_format_time_series_yaml_with_candidates():
 @pytest.mark.asyncio
 async def test_run_scalar_query_exception():
     async def run(sql):
-        raise RuntimeError("boom")
+        msg = "boom"
+        raise RuntimeError(msg)
 
     result = await _run_scalar(run, "SELECT 1", "value")
     assert result is None

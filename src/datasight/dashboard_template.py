@@ -45,7 +45,8 @@ def project_template_dir(project_dir: Path | str) -> Path:
 
 def _validate_name(name: str) -> None:
     if not name or not _NAME_RE.match(name):
-        raise TemplateError(f"Invalid template name: {name!r}. Use letters, digits, '_', '-', '.'")
+        msg = f"Invalid template name: {name!r}. Use letters, digits, '_', '-', '.'"
+        raise TemplateError(msg)
 
 
 def template_path(name: str, project_dir: Path | str) -> Path:
@@ -99,20 +100,22 @@ def _normalize_template(data: dict[str, Any]) -> dict[str, Any]:
 def _validate_variable(var: dict[str, Any]) -> dict[str, Any]:
     name = var.get("name")
     if not isinstance(name, str) or not _VAR_NAME_RE.match(name):
-        raise TemplateError(f"Invalid variable name: {name!r}.")
+        msg = f"Invalid variable name: {name!r}."
+        raise TemplateError(msg)
     default = var.get("default")
     if default is not None and not isinstance(default, str):
-        raise TemplateError(f"Variable {name!r} default must be a string.")
+        msg = f"Variable {name!r} default must be a string."
+        raise TemplateError(msg)
     from_filename = var.get("from_filename")
     if from_filename is not None:
         if not isinstance(from_filename, str):
-            raise TemplateError(f"Variable {name!r} from_filename must be a string.")
+            msg = f"Variable {name!r} from_filename must be a string."
+            raise TemplateError(msg)
         try:
             re.compile(from_filename)
         except re.error as err:
-            raise TemplateError(
-                f"Variable {name!r} from_filename regex is invalid: {err}"
-            ) from err
+            msg = f"Variable {name!r} from_filename regex is invalid: {err}"
+            raise TemplateError(msg) from err
     return {
         "name": name,
         "default": default if default is not None else "",
@@ -130,7 +133,8 @@ def render_sql(sql: str, values: Mapping[str, str]) -> str:
     def _sub(match: re.Match[str]) -> str:
         name = match.group(1)
         if name not in values:
-            raise TemplateError(f"SQL references unknown variable {{{{{name}}}}}.")
+            msg = f"SQL references unknown variable {{{{{name}}}}}."
+            raise TemplateError(msg)
         return str(values[name])
 
     return _PLACEHOLDER_RE.sub(_sub, sql)
@@ -161,13 +165,15 @@ def resolve_variables(
             continue
         if regex := var.get("from_filename"):
             if file_str is None:
-                raise TemplateError(
+                msg = (
                     f"Variable {name!r} extracts from filename but no input filename is available."
                 )
+                raise TemplateError(msg)
             if not (match := re.search(regex, file_str)):
-                raise TemplateError(
+                msg = (
                     f"Filename {file_str!r} does not match regex {regex!r} for variable {name!r}."
                 )
+                raise TemplateError(msg)
             resolved[name] = match.group(match.lastindex or 0)
             continue
         resolved[name] = var["default"]
@@ -233,22 +239,25 @@ def build_template(
     filters = list(dashboard.get("filters") or [])
 
     if not items:
-        raise TemplateError("Cannot save an empty dashboard as a template.")
+        msg = "Cannot save an empty dashboard as a template."
+        raise TemplateError(msg)
 
     if required_tables is None:
         required_tables = collect_required_tables(items)
     required_tables = [t for t in required_tables if t]
     if not required_tables:
-        raise TemplateError(
+        msg = (
             "Could not infer required_tables from dashboard SQL. "
             "Pass --table explicitly (repeatable)."
         )
+        raise TemplateError(msg)
 
     normalized_vars = [_validate_variable(v) for v in (variables or [])]
     seen_var_names: set[str] = set()
     for var in normalized_vars:
         if var["name"] in seen_var_names:
-            raise TemplateError(f"Duplicate variable name: {var['name']!r}.")
+            msg = f"Duplicate variable name: {var['name']!r}."
+            raise TemplateError(msg)
         seen_var_names.add(var["name"])
     if normalized_vars:
         items = _rewrite_sql_with_variables(items, normalized_vars)
@@ -275,15 +284,17 @@ def save_template(
     """Persist a template dict into the project's templates directory."""
     name = template.get("name")
     if not isinstance(name, str):
-        raise TemplateError("Template is missing a 'name' field.")
+        msg = "Template is missing a 'name' field."
+        raise TemplateError(msg)
     _validate_name(name)
 
     path = template_path(name, project_dir)
     if path.exists() and not overwrite:
-        raise TemplateError(
+        msg = (
             f"Template {name!r} already exists at {path}. "
             "Pass overwrite=True (or --overwrite) to replace it."
         )
+        raise TemplateError(msg)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(template, indent=2), encoding="utf-8")
     return path
@@ -293,13 +304,16 @@ def load_template(name: str, project_dir: Path | str) -> dict[str, Any]:
     """Load a template by name from a project."""
     path = template_path(name, project_dir)
     if not path.exists():
-        raise TemplateError(f"Template {name!r} not found at {path}.")
+        msg = f"Template {name!r} not found at {path}."
+        raise TemplateError(msg)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as err:
-        raise TemplateError(f"Template {name!r} is not valid JSON: {err}") from err
+        msg = f"Template {name!r} is not valid JSON: {err}"
+        raise TemplateError(msg) from err
     if not isinstance(data, dict):
-        raise TemplateError(f"Template {name!r} must be a JSON object.")
+        msg = f"Template {name!r} must be a JSON object."
+        raise TemplateError(msg)
     return _normalize_template(data)
 
 
@@ -372,7 +386,7 @@ def _list_attached_tables(conn) -> set[str]:
     return {str(r[0]) for r in rows}
 
 
-async def apply_template(
+async def apply_template(  # noqa: C901
     template: dict[str, Any],
     output_path: Path,
     *,
