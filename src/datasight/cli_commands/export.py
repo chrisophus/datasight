@@ -63,7 +63,7 @@ from datasight.cli_helpers import format_epilog
     help="Comma-separated turn indices to exclude (0-based, each turn is a Q&A pair).",
 )
 @click.option("--list-sessions", is_flag=True, help="List available sessions and exit.")
-def export(
+def export(  # noqa: C901
     session_id,
     output_path,
     output_format,

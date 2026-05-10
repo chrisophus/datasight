@@ -29,7 +29,8 @@ def test_chat_reports_configuration_errors(monkeypatch):
     async def boom(*args, **kwargs):  # noqa: ARG001
         if False:
             yield ""
-        raise RuntimeError("boom")
+        msg = "boom"
+        raise RuntimeError(msg)
 
     monkeypatch.setattr(web_app, "generate_chat_response", boom)
 

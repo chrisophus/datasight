@@ -88,7 +88,7 @@ from datasight.cli_helpers import format_epilog
         "into auto-named tables (CREATE OR REPLACE)."
     ),
 )
-def ask(
+def ask(  # noqa: C901
     question,
     project_dir,
     model,

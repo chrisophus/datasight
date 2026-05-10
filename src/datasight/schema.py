@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-def filter_tables(
+def filter_tables(  # noqa: C901
     tables: list[TableInfo], schema_config: dict[str, Any] | None
 ) -> list[TableInfo]:
     """Apply ``schema.yaml`` filtering to introspected tables.
@@ -122,7 +122,7 @@ def filter_tables(
     return result
 
 
-async def introspect_schema(
+async def introspect_schema(  # noqa: C901
     run_sql: RunSql,
     runner: Any = None,
     allowed_tables: set[str] | None = None,
@@ -335,7 +335,8 @@ def _validate_identifier(name: str) -> str:
     Raises ValueError for names containing characters that could enable injection.
     """
     if not all(c.isalnum() or c in ("_", "-", ".") for c in name):
-        raise ValueError(f"Unsafe identifier: {name!r}")
+        msg = f"Unsafe identifier: {name!r}"
+        raise ValueError(msg)
     return name
 
 
@@ -347,7 +348,8 @@ def _quote_identifier(name: str) -> str:
     inside a quoted identifier (null bytes, newlines).
     """
     if any(c in name for c in ("\x00", "\n", "\r")):
-        raise ValueError(f"Unsafe identifier: {name!r}")
+        msg = f"Unsafe identifier: {name!r}"
+        raise ValueError(msg)
     return '"' + name.replace('"', '""') + '"'
 
 

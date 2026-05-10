@@ -83,7 +83,8 @@ class DuckDBRunner:
             self._conn = duckdb.connect(self._database_path, read_only=True)
             logger.info(f"Connected to DuckDB: {self._database_path}")
         except duckdb.Error as e:
-            raise ConnectionError(f"Failed to connect to DuckDB: {e}") from e
+            msg = f"Failed to connect to DuckDB: {e}"
+            raise ConnectionError(msg) from e
 
     def close(self) -> None:
         """Close the database connection."""
@@ -109,7 +110,8 @@ class DuckDBRunner:
     def _execute(self, sql: str) -> pd.DataFrame:
         """Execute SQL synchronously."""
         if self._conn is None:
-            raise ConnectionError("DuckDBRunner is closed")
+            msg = "DuckDBRunner is closed"
+            raise ConnectionError(msg)
         if self.special_identifiers:
             from datasight.identifiers import quote_special_identifiers
 
@@ -138,10 +140,11 @@ class DuckDBRunner:
                 timeout=self._query_timeout,
             )
         except TimeoutError:
-            raise QueryTimeoutError(
+            msg = (
                 f"Query timed out after {self._query_timeout:.0f}s. "
                 "Try a simpler query or add filters to reduce the result set."
             )
+            raise QueryTimeoutError(msg)
 
 
 class EphemeralDuckDBRunner:
@@ -191,7 +194,8 @@ class EphemeralDuckDBRunner:
     def _execute(self, sql: str) -> pd.DataFrame:
         """Execute SQL synchronously."""
         if self._conn is None:
-            raise ConnectionError("EphemeralDuckDBRunner is closed")
+            msg = "EphemeralDuckDBRunner is closed"
+            raise ConnectionError(msg)
         if self.special_identifiers:
             from datasight.identifiers import quote_special_identifiers
 
@@ -220,10 +224,11 @@ class EphemeralDuckDBRunner:
                 timeout=self._query_timeout,
             )
         except TimeoutError:
-            raise QueryTimeoutError(
+            msg = (
                 f"Query timed out after {self._query_timeout:.0f}s. "
                 "Try a simpler query or add filters to reduce the result set."
             )
+            raise QueryTimeoutError(msg)
 
 
 class SQLiteRunner:
@@ -243,7 +248,8 @@ class SQLiteRunner:
             self._conn.row_factory = sqlite3.Row
             logger.info(f"Connected to SQLite: {self._database_path}")
         except sqlite3.Error as e:
-            raise ConnectionError(f"Failed to connect to SQLite: {e}") from e
+            msg = f"Failed to connect to SQLite: {e}"
+            raise ConnectionError(msg) from e
 
     def close(self) -> None:
         """Close the database connection."""
@@ -269,7 +275,8 @@ class SQLiteRunner:
     def _execute(self, sql: str) -> pd.DataFrame:
         """Execute SQL synchronously."""
         if self._conn is None:
-            raise ConnectionError("SQLiteRunner is closed")
+            msg = "SQLiteRunner is closed"
+            raise ConnectionError(msg)
         if self.special_identifiers:
             from datasight.identifiers import quote_special_identifiers
 
@@ -294,10 +301,11 @@ class SQLiteRunner:
                 timeout=self._query_timeout,
             )
         except TimeoutError:
-            raise QueryTimeoutError(
+            msg = (
                 f"Query timed out after {self._query_timeout:.0f}s. "
                 "Try a simpler query or add filters to reduce the result set."
             )
+            raise QueryTimeoutError(msg)
 
 
 class PostgresRunner:
@@ -340,7 +348,8 @@ class PostgresRunner:
                 )
                 logger.info(f"Connected to PostgreSQL: {host}:{port}/{dbname}")
         except psycopg.Error as e:
-            raise ConnectionError(f"Failed to connect to PostgreSQL: {e}") from e
+            msg = f"Failed to connect to PostgreSQL: {e}"
+            raise ConnectionError(msg) from e
 
     def close(self) -> None:
         """Close the database connection."""
@@ -366,7 +375,8 @@ class PostgresRunner:
     def _execute(self, sql: str) -> pd.DataFrame:
         """Execute SQL synchronously."""
         if self._conn is None:
-            raise ConnectionError("PostgresRunner is closed")
+            msg = "PostgresRunner is closed"
+            raise ConnectionError(msg)
         if self.special_identifiers:
             from datasight.identifiers import quote_special_identifiers
 
@@ -395,10 +405,11 @@ class PostgresRunner:
                 timeout=self._query_timeout,
             )
         except TimeoutError:
-            raise QueryTimeoutError(
+            msg = (
                 f"Query timed out after {self._query_timeout:.0f}s. "
                 "Try a simpler query or add filters to reduce the result set."
             )
+            raise QueryTimeoutError(msg)
 
 
 class FlightSqlRunner:
@@ -437,7 +448,8 @@ class FlightSqlRunner:
             logger.info(f"Connected to Flight SQL server: {self.uri}")
         except Exception as e:
             logger.exception("Flight SQL connection error")
-            raise ConnectionError(f"Failed to connect to Flight SQL server: {e}") from e
+            msg = f"Failed to connect to Flight SQL server: {e}"
+            raise ConnectionError(msg) from e
 
     def close(self) -> None:
         """Close the database connection."""
@@ -463,7 +475,8 @@ class FlightSqlRunner:
     def get_table_names(self) -> list[str]:
         """Use the ADBC GetObjects RPC to list tables."""
         if self._conn is None:
-            raise ConnectionError("FlightSqlRunner is closed")
+            msg = "FlightSqlRunner is closed"
+            raise ConnectionError(msg)
         try:
             objects = self._conn.adbc_get_objects().read_all()
             names = []
@@ -479,12 +492,14 @@ class FlightSqlRunner:
             return names
         except Exception as e:
             logger.debug(f"Flight SQL GetObjects error: {e}")
-            raise QueryError(f"Failed to get table names: {e}") from e
+            msg = f"Failed to get table names: {e}"
+            raise QueryError(msg) from e
 
     def _execute(self, sql: str) -> pd.DataFrame:
         """Execute SQL synchronously."""
         if self._conn is None:
-            raise ConnectionError("FlightSqlRunner is closed")
+            msg = "FlightSqlRunner is closed"
+            raise ConnectionError(msg)
         sql = sql.strip().rstrip(";")
         logger.debug(f"Flight SQL query: {sql[:200]}")
         try:
@@ -506,10 +521,11 @@ class FlightSqlRunner:
                 timeout=self.timeout,
             )
         except TimeoutError:
-            raise QueryTimeoutError(
+            msg = (
                 f"Query timed out after {self.timeout:.0f}s. "
                 "Try a simpler query or add filters to reduce the result set."
             )
+            raise QueryTimeoutError(msg)
 
 
 class SparkConnectRunner:
@@ -546,10 +562,11 @@ class SparkConnectRunner:
         try:
             from pyspark.sql import SparkSession  # ty: ignore[unresolved-import]
         except ImportError as e:
-            raise ConnectionError(
+            msg = (
                 "Spark Connect support requires pyspark. "
                 "Install with: pip install 'datasight[spark]'"
-            ) from e
+            )
+            raise ConnectionError(msg) from e
         try:
             builder = SparkSession.builder.remote(self._remote)
             if self._token:
@@ -563,7 +580,8 @@ class SparkConnectRunner:
             raise
         except Exception as e:
             logger.exception("Spark Connect connection error")
-            raise ConnectionError(f"Failed to connect to Spark Connect: {e}") from e
+            msg = f"Failed to connect to Spark Connect: {e}"
+            raise ConnectionError(msg) from e
 
     @staticmethod
     def _probe_connection(spark: Any, remote: str, timeout: float = 5.0) -> None:
@@ -593,17 +611,17 @@ class SparkConnectRunner:
         try:
             status, payload = result_q.get(timeout=timeout)
         except queue.Empty:
-            raise ConnectionError(
+            msg = (
                 f"Could not reach Spark Connect server at {remote} within "
                 f"{timeout:.0f}s. Is the Connect server actually running and "
                 "listening on that host/port? "
                 "(start-connect-server.sh on the cluster, then re-check the "
                 "URI in your .env)"
             )
+            raise ConnectionError(msg)
         if status == "error":
-            raise ConnectionError(
-                f"Spark Connect server at {remote} rejected the handshake: {payload}"
-            )
+            msg = f"Spark Connect server at {remote} rejected the handshake: {payload}"
+            raise ConnectionError(msg)
 
     @staticmethod
     def _enable_ansi_quoted_identifiers(spark: Any) -> None:
@@ -629,7 +647,7 @@ class SparkConnectRunner:
             )
 
     @staticmethod
-    def _log_session_info(spark: Any) -> None:
+    def _log_session_info(spark: Any) -> None:  # noqa: C901
         """Log Spark session details so users can verify they're distributed.
 
         Surfaces version, master URL, app id, parallelism, and executor
@@ -751,12 +769,14 @@ class SparkConnectRunner:
         API returns structured ``Table`` objects with a stable ``.name``.
         """
         if self._spark is None:
-            raise ConnectionError("SparkConnectRunner is closed")
+            msg = "SparkConnectRunner is closed"
+            raise ConnectionError(msg)
         try:
             tables = self._spark.catalog.listTables()
         except Exception as e:
             logger.debug(f"Spark catalog.listTables error: {e}")
-            raise QueryError(f"Failed to list Spark tables: {e}") from e
+            msg = f"Failed to list Spark tables: {e}"
+            raise QueryError(msg) from e
         names: list[str] = []
         for t in tables:
             name = getattr(t, "name", None)
@@ -786,12 +806,14 @@ class SparkConnectRunner:
         API returns the same information without any SQL.
         """
         if self._spark is None:
-            raise ConnectionError("SparkConnectRunner is closed")
+            msg = "SparkConnectRunner is closed"
+            raise ConnectionError(msg)
         try:
             columns = self._spark.catalog.listColumns(table)
         except Exception as e:
             logger.debug(f"Spark catalog.listColumns({table}) error: {e}")
-            raise QueryError(f"Failed to list Spark columns for {table}: {e}") from e
+            msg = f"Failed to list Spark columns for {table}: {e}"
+            raise QueryError(msg) from e
         result: list[ColumnInfo] = []
         for c in columns:
             result.append(
@@ -843,9 +865,10 @@ class SparkConnectRunner:
                         pass
                     break
 
-    def _execute(self, sql: str) -> pd.DataFrame:
+    def _execute(self, sql: str) -> pd.DataFrame:  # noqa: C901
         if self._spark is None:
-            raise ConnectionError("SparkConnectRunner is closed")
+            msg = "SparkConnectRunner is closed"
+            raise ConnectionError(msg)
         import pyarrow as pa
 
         sql = sql.strip().rstrip(";")
@@ -913,7 +936,8 @@ class SparkConnectRunner:
 
     async def run_sql(self, sql: str) -> pd.DataFrame:
         if self._spark is None:
-            raise ConnectionError("SparkConnectRunner is closed")
+            msg = "SparkConnectRunner is closed"
+            raise ConnectionError(msg)
 
         # Tag every query so we can interrupt server-side on timeout. Without
         # this, asyncio.wait_for cancels the local task but the gRPC call and
@@ -966,10 +990,11 @@ class SparkConnectRunner:
                         interrupt_tag(tag)
                     except Exception:
                         logger.warning("Failed to interrupt Spark query on timeout")
-                raise QueryTimeoutError(
+                msg = (
                     f"Query timed out after {self._query_timeout:.0f}s. "
                     "Try a simpler query or add filters to reduce the result set."
                 )
+                raise QueryTimeoutError(msg)
         finally:
             # wait=False: if the worker thread is still blocked on a gRPC
             # call, do not block shutdown. The thread will exit after the

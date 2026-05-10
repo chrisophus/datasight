@@ -53,7 +53,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the trend overview to a file instead of stdout.",
 )
-def trends(files, project_dir, table, output_format, output_path):
+def trends(files, project_dir, table, output_format, output_path):  # noqa: C901
     """Surface likely trend analyses and chart recommendations.
 
     Run inside a configured project, or pass one or more Parquet, CSV, Excel,
@@ -100,7 +100,8 @@ def trends(files, project_dir, table, output_format, output_path):
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info = [table_info]
         return await build_trend_overview(schema_info, sql_runner.run_sql, measure_overrides)
 

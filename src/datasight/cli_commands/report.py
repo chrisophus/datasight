@@ -118,7 +118,7 @@ def report_list(project_dir):
     default=None,
     help="Output file path for chart or data export.",
 )
-def report_run(report_id, project_dir, output_format, chart_format, output_path):
+def report_run(report_id, project_dir, output_format, chart_format, output_path):  # noqa: C901
     """Re-execute a saved report against fresh data.
 
     REPORT_ID is the numeric ID shown by 'datasight report list'.

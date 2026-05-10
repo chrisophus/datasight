@@ -274,7 +274,7 @@ def _apply_measure_override(
     return merged
 
 
-def _infer_measure_semantics(
+def _infer_measure_semantics(  # noqa: C901
     column_name: str,
     dtype: str,
     sibling_columns: list[str] | None = None,
@@ -510,7 +510,7 @@ async def _get_dimension_stats(
     }
 
 
-async def build_dataset_overview(
+async def build_dataset_overview(  # noqa: C901
     schema_info: list[dict[str, Any]], run_sql: RunSql
 ) -> dict[str, Any]:
     """Build a deterministic overview of the loaded dataset."""
@@ -648,7 +648,7 @@ async def build_dimension_overview(
     }
 
 
-async def build_measure_overview(
+async def build_measure_overview(  # noqa: C901
     schema_info: list[dict[str, Any]],
     run_sql: RunSql,  # noqa: ARG001
     overrides: list[dict[str, Any]] | None = None,
@@ -838,7 +838,7 @@ def format_measure_prompt_context(measure_data: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-async def build_quality_overview(
+async def build_quality_overview(  # noqa: C901
     schema_info: list[dict[str, Any]],
     run_sql: RunSql,
 ) -> dict[str, Any]:

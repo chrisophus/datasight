@@ -51,7 +51,8 @@ async def _gather_tidy_data(project_dir: str, source_table: str | None, settings
         if source_table:
             table_info = find_table_info(schema_info, source_table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {source_table}")
+                msg = f"Table not found: {source_table}"
+                raise click.ClickException(msg)
             schema_info = [table_info]
         data = analyze_tidy_patterns(schema_info)
         suggestions_by_table = {t["name"]: _detect_period_groups(t) for t in schema_info}
@@ -213,10 +214,11 @@ def tidy_suggest(files, project_dir, source_table, output_format, output_path):
     """
     if files:
         if source_table:
-            raise click.UsageError(
+            msg = (
                 "--table cannot be combined with positional FILES; "
                 "scope is implicit when files are passed."
             )
+            raise click.UsageError(msg)
         tidy_data = asyncio.run(_gather_tidy_data_for_files(files))
     else:
         settings, project_dir, _ = _resolve_tidy_settings(project_dir)
@@ -318,9 +320,8 @@ def tidy_view(project_dir, source_table, dry_run):
     """
     settings, project_dir, resolved_db_path = _resolve_tidy_settings(project_dir)
     if settings.database.mode != "duckdb":
-        raise click.UsageError(
-            "tidy view requires DuckDB; the apply path opens a writable DuckDB connection."
-        )
+        msg = "tidy view requires DuckDB; the apply path opens a writable DuckDB connection."
+        raise click.UsageError(msg)
     _, suggestions_by_table = asyncio.run(_gather_tidy_data(project_dir, source_table, settings))
     _apply_reshapes(suggestions_by_table, "view", dry_run, resolved_db_path)
 
@@ -354,9 +355,8 @@ def tidy_table(project_dir, source_table, dry_run):
     """
     settings, project_dir, resolved_db_path = _resolve_tidy_settings(project_dir)
     if settings.database.mode != "duckdb":
-        raise click.UsageError(
-            "tidy table requires DuckDB; the apply path opens a writable DuckDB connection."
-        )
+        msg = "tidy table requires DuckDB; the apply path opens a writable DuckDB connection."
+        raise click.UsageError(msg)
     _, suggestions_by_table = asyncio.run(_gather_tidy_data(project_dir, source_table, settings))
     _apply_reshapes(suggestions_by_table, "table", dry_run, resolved_db_path)
 
@@ -469,7 +469,7 @@ def tidy_table(project_dir, source_table, dry_run):
         "when the LLM seeing the values is acceptable."
     ),
 )
-def tidy_review(
+def tidy_review(  # noqa: C901
     project_dir,
     source_table,
     plan_path,
@@ -527,17 +527,17 @@ def tidy_review(
             if disposition.mode == "replace"
             else "pointing at a missing object."
         )
-        raise click.UsageError(
+        msg = (
             f"{flag} requires '--as table'. A view references "
             f"its source by name, so {gerund} the source would leave "
             f"the long-form view {consequence}"
         )
+        raise click.UsageError(msg)
 
     settings, project_dir, resolved_db_path = _resolve_tidy_settings(project_dir)
     if settings.database.mode != "duckdb":
-        raise click.UsageError(
-            "tidy review requires DuckDB; the apply path opens a writable DuckDB connection."
-        )
+        msg = "tidy review requires DuckDB; the apply path opens a writable DuckDB connection."
+        raise click.UsageError(msg)
 
     # Load suggestions. Three sources, in priority order:
     #   1. --from PLAN  : load that plan and skip the LLM entirely.
@@ -599,7 +599,8 @@ def tidy_review(
                 click.echo(f"  - {problem}", err=True)
 
     if not valid:
-        raise click.ClickException("No valid proposals after schema cross-check.")
+        msg = "No valid proposals after schema cross-check."
+        raise click.ClickException(msg)
 
     # `--apply-all` is the non-interactive code path used by tests and
     # scripted prep. Without it, walk the developer through each proposal

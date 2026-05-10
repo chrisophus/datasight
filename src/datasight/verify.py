@@ -77,7 +77,7 @@ def parse_expectation(entry: dict[str, Any]) -> Expectation:
     )
 
 
-def check_result(df: pd.DataFrame, expectation: Expectation) -> list[Check]:
+def check_result(df: pd.DataFrame, expectation: Expectation) -> list[Check]:  # noqa: C901
     """Compare a DataFrame against expected properties."""
     checks: list[Check] = []
 
@@ -153,7 +153,7 @@ def check_result(df: pd.DataFrame, expectation: Expectation) -> list[Check]:
     return checks
 
 
-async def run_single_verification(
+async def run_single_verification(  # noqa: C901
     *,
     question: str,
     reference_sql: str,

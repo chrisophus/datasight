@@ -101,7 +101,7 @@ async def _compute_percentiles(
     return result
 
 
-async def _compute_stats(
+async def _compute_stats(  # noqa: C901
     run_sql: RunSql,
     table: str,
     column: str,
@@ -333,7 +333,7 @@ async def _detect_spikes(
     return spikes[:8]
 
 
-async def build_distribution_overview(
+async def build_distribution_overview(  # noqa: C901
     schema_info: list[dict[str, Any]],
     run_sql: RunSql,
     overrides: list[dict[str, Any]] | None = None,

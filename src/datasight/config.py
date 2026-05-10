@@ -138,12 +138,14 @@ def create_sql_runner(
             )
         case "sqlite":
             if not db_path:
-                raise ConfigurationError("DB_PATH is required for SQLite mode")
+                msg = "DB_PATH is required for SQLite mode"
+                raise ConfigurationError(msg)
             logger.info(f"Opening SQLite: {db_path}")
             return SQLiteRunner(database_path=db_path)
         case "duckdb":
             if not db_path:
-                raise ConfigurationError("DB_PATH is required for DuckDB mode")
+                msg = "DB_PATH is required for DuckDB mode"
+                raise ConfigurationError(msg)
             logger.info(f"Opening local DuckDB: {db_path}")
             return DuckDBRunner(database_path=db_path)
         case "spark":
@@ -154,7 +156,8 @@ def create_sql_runner(
                 max_result_bytes=spark_max_result_bytes,
             )
         case _:
-            raise ConfigurationError(f"Invalid database mode: {db_mode}")
+            msg = f"Invalid database mode: {db_mode}"
+            raise ConfigurationError(msg)
 
 
 def create_sql_runner_from_settings(
@@ -275,7 +278,7 @@ def load_example_queries(path: str | None, project_dir: str) -> list[dict[str, A
     return valid
 
 
-def load_measure_overrides(path: str | None, project_dir: str) -> list[dict[str, Any]]:
+def load_measure_overrides(path: str | None, project_dir: str) -> list[dict[str, Any]]:  # noqa: C901
     """Load project-level measure overrides from YAML.
 
     Expected format is a list of mappings with at least ``table`` plus either
@@ -346,7 +349,7 @@ def load_measure_overrides(path: str | None, project_dir: str) -> list[dict[str,
     return valid
 
 
-def load_schema_config(path: str | None, project_dir: str) -> dict[str, Any] | None:
+def load_schema_config(path: str | None, project_dir: str) -> dict[str, Any] | None:  # noqa: C901
     """Load optional ``schema.yaml`` allowlist for tables and columns.
 
     Expected format::
@@ -410,7 +413,7 @@ def load_schema_config(path: str | None, project_dir: str) -> dict[str, Any] | N
 _VALID_FREQUENCIES = {"PT1H", "PT15M", "PT30M", "P1D", "P1M"}
 
 
-def load_time_series_config(path: str | None, project_dir: str) -> list[dict[str, Any]]:
+def load_time_series_config(path: str | None, project_dir: str) -> list[dict[str, Any]]:  # noqa: C901
     """Load time series declarations from YAML.
 
     Expected format is a list of mappings with at least ``table``,

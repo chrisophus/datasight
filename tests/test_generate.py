@@ -403,7 +403,8 @@ class TestSampleTimestampColumns:
         """Query exceptions skip the column silently."""
 
         async def run_sql(sql):
-            raise RuntimeError("boom")
+            msg = "boom"
+            raise RuntimeError(msg)
 
         tables = [
             TableInfo(

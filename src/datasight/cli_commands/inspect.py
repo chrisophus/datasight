@@ -46,7 +46,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the full report to a file instead of stdout.",
 )
-def inspect(files, output_format, output_path):
+def inspect(files, output_format, output_path):  # noqa: C901
     """Run all analyses on Parquet, CSV, Excel, or DuckDB files and print results.
 
     Creates a file-backed session and runs profile, quality, measures,

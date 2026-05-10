@@ -290,7 +290,7 @@ def parse_and_validate_response(text: str, stop_reason: str) -> tuple[str, str |
         return schema_content, queries_content
 
     if stop_reason == "max_tokens":
-        raise GenerationResponseError(
+        msg = (
             "LLM hit its output token budget before producing the schema "
             "description. Reasoning models (qwen3, gpt-oss, Anthropic "
             "extended thinking, etc.) often spend thousands of tokens on "
@@ -299,11 +299,13 @@ def parse_and_validate_response(text: str, stop_reason: str) -> tuple[str, str |
             "larger value (subject to provider limits — GitHub Models "
             "caps output around 8K)."
         )
-    raise GenerationResponseError(
+        raise GenerationResponseError(msg)
+    msg = (
         "LLM did not produce a parseable schema description. The "
         "response was empty or could not be split into the required "
         "sections."
     )
+    raise GenerationResponseError(msg)
 
 
 def _clean_yaml_content(content: str) -> str:

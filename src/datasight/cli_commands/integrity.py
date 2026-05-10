@@ -48,7 +48,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the integrity audit to a file instead of stdout.",
 )
-def integrity(project_dir, table, output_format, output_path):
+def integrity(project_dir, table, output_format, output_path):  # noqa: C901
     """Audit cross-table referential integrity - keys, orphans, and join risks.
 
     Use this to find likely primary keys, duplicate keys, orphaned foreign
@@ -72,7 +72,8 @@ def integrity(project_dir, table, output_format, output_path):
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info_filtered = [table_info]
         else:
             schema_info_filtered = schema_info

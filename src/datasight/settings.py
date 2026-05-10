@@ -337,9 +337,8 @@ class Settings:
         llm_provider_raw = os.environ.get("LLM_PROVIDER", "anthropic")
         if llm_provider_raw not in SUPPORTED_PROVIDERS:
             valid_providers = ", ".join(sorted(SUPPORTED_PROVIDERS))
-            raise ConfigurationError(
-                f"Invalid LLM_PROVIDER: {llm_provider_raw!r}. Valid providers: {valid_providers}"
-            )
+            msg = f"Invalid LLM_PROVIDER: {llm_provider_raw!r}. Valid providers: {valid_providers}"
+            raise ConfigurationError(msg)
         llm_provider = cast("LLMProvider", llm_provider_raw)
 
         # Normalize DB_MODE (accept 'local' as alias for 'duckdb')
@@ -357,9 +356,8 @@ class Settings:
                 db_mode = "spark"
             case _:
                 valid_modes = "duckdb, sqlite, postgres, flightsql, spark"
-                raise ConfigurationError(
-                    f"Invalid DB_MODE: {db_mode_raw!r}. Valid modes: {valid_modes}"
-                )
+                msg = f"Invalid DB_MODE: {db_mode_raw!r}. Valid modes: {valid_modes}"
+                raise ConfigurationError(msg)
 
         return cls(
             llm=LLMSettings(

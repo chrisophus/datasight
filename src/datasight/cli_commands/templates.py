@@ -40,13 +40,13 @@ def templates():
 def _load_project_dashboard(project_dir: str) -> dict[str, Any]:
     path = Path(project_dir).resolve() / ".datasight" / "dashboard.json"
     if not path.exists():
-        raise click.ClickException(
-            f"No dashboard found at {path}. Build a dashboard in the web UI first."
-        )
+        msg = f"No dashboard found at {path}. Build a dashboard in the web UI first."
+        raise click.ClickException(msg)
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as err:
-        raise click.ClickException(f"Dashboard JSON is invalid: {err}") from err
+        msg = f"Dashboard JSON is invalid: {err}"
+        raise click.ClickException(msg) from err
 
 
 def _resolve_project_duckdb(project_dir: str) -> Path | None:
@@ -153,24 +153,24 @@ def template_save(
     var_defs: dict[str, dict[str, str]] = {}
     for raw in variables:
         if "=" not in raw:
-            raise click.ClickException(f"Invalid --var value {raw!r}. Expected NAME=VALUE.")
+            msg = f"Invalid --var value {raw!r}. Expected NAME=VALUE."
+            raise click.ClickException(msg)
         key, _, value = raw.partition("=")
         key = key.strip()
         value = value.strip()
         if not key or not value:
-            raise click.ClickException(f"Invalid --var value {raw!r}. Expected NAME=VALUE.")
+            msg = f"Invalid --var value {raw!r}. Expected NAME=VALUE."
+            raise click.ClickException(msg)
         var_defs[key] = {"name": key, "default": value}
     for raw in variable_regexes:
         if "=" not in raw:
-            raise click.ClickException(
-                f"Invalid --var-from-filename value {raw!r}. Expected NAME=REGEX."
-            )
+            msg = f"Invalid --var-from-filename value {raw!r}. Expected NAME=REGEX."
+            raise click.ClickException(msg)
         key, _, regex = raw.partition("=")
         key = key.strip()
         if not key or not regex:
-            raise click.ClickException(
-                f"Invalid --var-from-filename value {raw!r}. Expected NAME=REGEX."
-            )
+            msg = f"Invalid --var-from-filename value {raw!r}. Expected NAME=REGEX."
+            raise click.ClickException(msg)
         var_defs.setdefault(key, {"name": key, "default": ""})["from_filename"] = regex
 
     dashboard = _load_project_dashboard(project_dir)
@@ -319,7 +319,7 @@ def template_show(name: str, project_dir: str):
     is_flag=True,
     help="Stop on the first failure instead of continuing.",
 )
-def template_apply(
+def template_apply(  # noqa: C901
     name: str,
     project_dir: str,
     table_mappings: tuple[str, ...],
@@ -354,11 +354,13 @@ def template_apply(
     cli_var_overrides: dict[str, str] = {}
     for raw in var_overrides:
         if "=" not in raw:
-            raise click.ClickException(f"Invalid --var value {raw!r}. Expected NAME=VALUE.")
+            msg = f"Invalid --var value {raw!r}. Expected NAME=VALUE."
+            raise click.ClickException(msg)
         key, _, value = raw.partition("=")
         key = key.strip()
         if not key:
-            raise click.ClickException(f"Invalid --var value {raw!r}. Expected NAME=VALUE.")
+            msg = f"Invalid --var value {raw!r}. Expected NAME=VALUE."
+            raise click.ClickException(msg)
         cli_var_overrides[key] = value
 
     base_db = _resolve_project_duckdb(project_dir)
@@ -366,14 +368,17 @@ def template_apply(
     parsed: dict[str, str] = {}
     for mapping in table_mappings:
         if "=" not in mapping:
-            raise click.ClickException(f"Invalid --table value {mapping!r}. Expected NAME=PATH.")
+            msg = f"Invalid --table value {mapping!r}. Expected NAME=PATH."
+            raise click.ClickException(msg)
         key, _, value = mapping.partition("=")
         key = key.strip()
         value = value.strip()
         if not key or not value:
-            raise click.ClickException(f"Invalid --table value {mapping!r}. Expected NAME=PATH.")
+            msg = f"Invalid --table value {mapping!r}. Expected NAME=PATH."
+            raise click.ClickException(msg)
         if key in parsed:
-            raise click.ClickException(f"Duplicate --table mapping for {key!r}.")
+            msg = f"Duplicate --table mapping for {key!r}."
+            raise click.ClickException(msg)
         parsed[key] = value
 
     rotating_name: str | None = None
@@ -384,16 +389,19 @@ def template_apply(
         if is_glob:
             matches = sorted(glob.glob(value))
             if not matches:
-                raise click.ClickException(f"No files match --table {key}={value!r}.")
+                msg = f"No files match --table {key}={value!r}."
+                raise click.ClickException(msg)
             if rotating_name is not None:
-                raise click.ClickException(
+                msg = (
                     f"Only one --table mapping may glob. Both {rotating_name!r} and {key!r} glob."
                 )
+                raise click.ClickException(msg)
             rotating_name = key
             rotating_paths = matches
             continue
         if not Path(value).exists():
-            raise click.ClickException(f"File not found for --table {key}: {value}")
+            msg = f"File not found for --table {key}: {value}"
+            raise click.ClickException(msg)
         fixed[key] = value
 
     required = list(template_obj.get("required_tables") or [])
@@ -430,27 +438,30 @@ def template_apply(
         )
 
     if output_path and export_dir:
-        raise click.ClickException("Pass either --output or --export-dir, not both.")
+        msg = "Pass either --output or --export-dir, not both."
+        raise click.ClickException(msg)
 
     if rotating_name is None and export_dir and not output_path:
         # No glob, but --export-dir was given. Promote a single non-globbed
         # mapping into the rotating slot so its stem names the output file.
         if len(fixed) != 1:
-            raise click.ClickException(
+            msg = (
                 "--export-dir needs exactly one --table mapping (or a glob) "
                 "to derive the output filename. "
                 f"Got {len(fixed)} mappings — use --output PATH instead."
             )
+            raise click.ClickException(msg)
         rotating_name, rotating_value = next(iter(fixed.items()))
         rotating_paths = [rotating_value]
         fixed.pop(rotating_name)
 
     if rotating_name is None:
         if not output_path:
-            raise click.ClickException(
+            msg = (
                 "Single-shot runs need --output PATH (or --export-dir DIR "
                 "to derive the filename from the input)."
             )
+            raise click.ClickException(msg)
         out_path = Path(output_path).resolve()
 
         try:
@@ -474,9 +485,8 @@ def template_apply(
         results = asyncio.run(single_run())
     else:
         if not export_dir and not (output_path and len(rotating_paths) == 1):
-            raise click.ClickException(
-                "Batch mode (a --table mapping with multiple matches) needs --export-dir DIR."
-            )
+            msg = "Batch mode (a --table mapping with multiple matches) needs --export-dir DIR."
+            raise click.ClickException(msg)
         out_dir = Path(export_dir).resolve() if export_dir else None
         if out_dir:
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -569,7 +579,8 @@ def template_delete(name: str, project_dir: str):
     except TemplateError as err:
         raise click.ClickException(str(err)) from err
     if not removed:
-        raise click.ClickException(f"Template {name!r} not found.")
+        msg = f"Template {name!r} not found."
+        raise click.ClickException(msg)
     click.echo(f"Deleted template {name!r}.")
 
 

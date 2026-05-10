@@ -66,7 +66,7 @@ def _fmt(value: Any, default: str = "-") -> str:
     return str(value)
 
 
-def render_audit_report_markdown(data: dict[str, Any]) -> str:
+def render_audit_report_markdown(data: dict[str, Any]) -> str:  # noqa: C901
     """Render the composite audit report as Markdown."""
     project_name = data.get("project_name")
     title = (

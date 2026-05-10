@@ -50,7 +50,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Path to queries YAML file (default: queries.yaml in project dir).",
 )
-def verify(project_dir, model, queries_path):
+def verify(project_dir, model, queries_path):  # noqa: C901
     """Verify LLM-generated SQL against expected results.
 
     Runs each question from queries.yaml through the full LLM pipeline,

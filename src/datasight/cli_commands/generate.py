@@ -111,7 +111,7 @@ from datasight.cli_helpers import format_epilog
         "GitHub Models caps output around 8K)."
     ),
 )
-def generate(
+def generate(  # noqa: C901
     files,
     project_dir,
     model,
@@ -295,7 +295,7 @@ def generate(
     # sqlite/duckdb sources) point at user-owned files we must NOT touch.
     created_persistent_db: Path | None = None
 
-    async def _run():
+    async def _run():  # noqa: C901
         nonlocal created_persistent_db
         from datasight.generate import (
             build_generation_context,

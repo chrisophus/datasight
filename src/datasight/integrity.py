@@ -166,7 +166,7 @@ async def _check_join_explosion(
     }
 
 
-async def build_integrity_overview(
+async def build_integrity_overview(  # noqa: C901
     schema_info: list[dict[str, Any]],
     run_sql: RunSql,
     declared_joins: list[dict[str, Any]] | None = None,

@@ -84,7 +84,8 @@ class SourceDisposition:
 
     def __post_init__(self) -> None:
         if self.mode == "rename" and not self.new_name:
-            raise ValueError("SourceDisposition(mode='rename') requires new_name")
+            msg = "SourceDisposition(mode='rename') requires new_name"
+            raise ValueError(msg)
 
 
 @dataclass
@@ -146,15 +147,16 @@ def load_plan(path: Path) -> Plan:
     """Load and structurally validate a plan file. Raises ``ValueError`` on problems."""
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise ValueError(f"Plan must be a JSON object, got {type(raw).__name__}")
+        msg = f"Plan must be a JSON object, got {type(raw).__name__}"
+        raise ValueError(msg)
     version = raw.get("version")
     if version != PLAN_VERSION:
-        raise ValueError(
-            f"Unsupported plan version {version!r}; this build expects {PLAN_VERSION}"
-        )
+        msg = f"Unsupported plan version {version!r}; this build expects {PLAN_VERSION}"
+        raise ValueError(msg)
     proposals_raw = raw.get("proposals", [])
     if not isinstance(proposals_raw, list):
-        raise ValueError("Plan 'proposals' must be a list")
+        msg = "Plan 'proposals' must be a list"
+        raise ValueError(msg)
     proposals = [_parse_proposal(p, index=i) for i, p in enumerate(proposals_raw)]
     return Plan(version=version, proposals=proposals)
 
@@ -190,7 +192,7 @@ def _suggestion_to_proposal_dict(s: TidySuggestion) -> dict[str, Any]:
     }
 
 
-def _parse_proposal(p: Any, *, index: int) -> TidySuggestion:
+def _parse_proposal(p: Any, *, index: int) -> TidySuggestion:  # noqa: C901
     """Parse one proposal dict into a :class:`TidySuggestion`.
 
     Pure structural validation only — no database lookups. Cross-checks
@@ -199,7 +201,8 @@ def _parse_proposal(p: Any, *, index: int) -> TidySuggestion:
     """
     where = f"proposal[{index}]"
     if not isinstance(p, dict):
-        raise ValueError(f"{where}: must be an object, got {type(p).__name__}")
+        msg = f"{where}: must be an object, got {type(p).__name__}"
+        raise ValueError(msg)
 
     table = _required_str(p, "table", where)
     dimensions = _parse_dimensions(p.get("dimensions"), where)
@@ -208,41 +211,51 @@ def _parse_proposal(p: Any, *, index: int) -> TidySuggestion:
 
     id_columns_raw = p.get("id_columns") or []
     if not isinstance(id_columns_raw, list) or any(not isinstance(c, str) for c in id_columns_raw):
-        raise ValueError(f"{where}: 'id_columns' must be a list of strings")
+        msg = f"{where}: 'id_columns' must be a list of strings"
+        raise ValueError(msg)
     if len(set(id_columns_raw)) != len(id_columns_raw):
-        raise ValueError(f"{where}: duplicate id_columns {id_columns_raw}")
+        msg = f"{where}: duplicate id_columns {id_columns_raw}"
+        raise ValueError(msg)
     mapped_columns = {m.column for m in column_mappings}
     overlap = set(id_columns_raw) & mapped_columns
     if overlap:
-        raise ValueError(f"{where}: id_columns overlap column_mappings: {sorted(overlap)}")
+        msg = f"{where}: id_columns overlap column_mappings: {sorted(overlap)}"
+        raise ValueError(msg)
 
     value_column = p.get("value_column") or "value"
     if not isinstance(value_column, str) or not value_column:
-        raise ValueError(f"{where}: 'value_column' must be a non-empty string")
+        msg = f"{where}: 'value_column' must be a non-empty string"
+        raise ValueError(msg)
     target_object_name = p.get("target_object_name") or f"{table}_long"
     if not isinstance(target_object_name, str) or not target_object_name:
-        raise ValueError(f"{where}: 'target_object_name' must be a non-empty string")
+        msg = f"{where}: 'target_object_name' must be a non-empty string"
+        raise ValueError(msg)
 
     confidence = p.get("confidence", "high")
     if confidence not in CONFIDENCE_LEVELS:
-        raise ValueError(
+        msg = (
             f"{where}: 'confidence' must be one of {sorted(CONFIDENCE_LEVELS)}, got {confidence!r}"
         )
+        raise ValueError(msg)
     source = p.get("source", "user")
     if not isinstance(source, str):
-        raise ValueError(f"{where}: 'source' must be a string")
+        msg = f"{where}: 'source' must be a string"
+        raise ValueError(msg)
     rationale = p.get("rationale", "")
     if not isinstance(rationale, str):
-        raise ValueError(f"{where}: 'rationale' must be a string")
+        msg = f"{where}: 'rationale' must be a string"
+        raise ValueError(msg)
     pattern = p.get("pattern") or "user_proposed"
     if not isinstance(pattern, str):
-        raise ValueError(f"{where}: 'pattern' must be a string")
+        msg = f"{where}: 'pattern' must be a string"
+        raise ValueError(msg)
 
     # Default False matches TidySuggestion's default — most NULLs in wide
     # tables are structural placeholders, not real missing observations.
     include_nulls_raw = p.get("include_nulls", False)
     if not isinstance(include_nulls_raw, bool):
-        raise ValueError(f"{where}: 'include_nulls' must be a boolean")
+        msg = f"{where}: 'include_nulls' must be a boolean"
+        raise ValueError(msg)
     include_nulls = include_nulls_raw
 
     reshape_sql = _build_reshape_sql(
@@ -274,38 +287,41 @@ def _parse_proposal(p: Any, *, index: int) -> TidySuggestion:
 def _required_str(d: dict[str, Any], key: str, where: str) -> str:
     value = d.get(key)
     if not isinstance(value, str) or not value:
-        raise ValueError(f"{where}: {key!r} must be a non-empty string")
+        msg = f"{where}: {key!r} must be a non-empty string"
+        raise ValueError(msg)
     return value
 
 
 def _parse_dimensions(raw: Any, where: str) -> list[Dimension]:
     if not isinstance(raw, list) or not raw:
-        raise ValueError(f"{where}: 'dimensions' must be a non-empty list")
+        msg = f"{where}: 'dimensions' must be a non-empty list"
+        raise ValueError(msg)
     dimensions: list[Dimension] = []
     for di, d in enumerate(raw):
         sub = f"{where}.dimensions[{di}]"
         if not isinstance(d, dict):
-            raise ValueError(f"{sub}: must be an object")
+            msg = f"{sub}: must be an object"
+            raise ValueError(msg)
         # ty narrows `dict` past `isinstance` to dict[Never, Never], so casts
         # are needed to access string keys.
         d_dict = cast(dict[str, Any], d)
         name = d_dict.get("name")
         kind = d_dict.get("kind")
         if not isinstance(name, str) or not name:
-            raise ValueError(f"{sub}: 'name' must be a non-empty string")
+            msg = f"{sub}: 'name' must be a non-empty string"
+            raise ValueError(msg)
         if not isinstance(kind, str) or kind not in DIMENSION_KINDS:
-            raise ValueError(
-                f"{sub}: 'kind' must be one of {sorted(DIMENSION_KINDS)}, got {kind!r}"
-            )
+            msg = f"{sub}: 'kind' must be one of {sorted(DIMENSION_KINDS)}, got {kind!r}"
+            raise ValueError(msg)
         dtype = d_dict.get("dtype", "VARCHAR")
         if not isinstance(dtype, str) or dtype.upper() not in _ALLOWED_DTYPES:
-            raise ValueError(
-                f"{sub}: 'dtype' must be one of {sorted(_ALLOWED_DTYPES)}, got {dtype!r}"
-            )
+            msg = f"{sub}: 'dtype' must be one of {sorted(_ALLOWED_DTYPES)}, got {dtype!r}"
+            raise ValueError(msg)
         dimensions.append(Dimension(name=name, kind=kind, dtype=dtype.upper()))
     names = [d.name for d in dimensions]
     if len(set(names)) != len(names):
-        raise ValueError(f"{where}: duplicate dimension names {names}")
+        msg = f"{where}: duplicate dimension names {names}"
+        raise ValueError(msg)
     return dimensions
 
 
@@ -327,42 +343,44 @@ _ALLOWED_DTYPES: frozenset[str] = frozenset(
 )
 
 
-def _parse_column_mappings(raw: Any, dim_names: list[str], where: str) -> list[ColumnMapping]:
+def _parse_column_mappings(raw: Any, dim_names: list[str], where: str) -> list[ColumnMapping]:  # noqa: C901
     if not isinstance(raw, list):
-        raise ValueError(f"{where}: 'column_mappings' must be a list")
+        msg = f"{where}: 'column_mappings' must be a list"
+        raise ValueError(msg)
     if len(raw) < 2:
-        raise ValueError(
-            f"{where}: 'column_mappings' must have at least 2 entries to be a meaningful reshape"
-        )
+        msg = f"{where}: 'column_mappings' must have at least 2 entries to be a meaningful reshape"
+        raise ValueError(msg)
     mappings: list[ColumnMapping] = []
     seen_columns: set[str] = set()
     seen_value_tuples: set[tuple[str, ...]] = set()
     for mi, m in enumerate(raw):
         sub = f"{where}.column_mappings[{mi}]"
         if not isinstance(m, dict):
-            raise ValueError(f"{sub}: must be an object")
+            msg = f"{sub}: must be an object"
+            raise ValueError(msg)
         m_dict = cast(dict[str, Any], m)
         col = m_dict.get("column")
         dv = m_dict.get("dimension_values")
         if not isinstance(col, str) or not col:
-            raise ValueError(f"{sub}: 'column' must be a non-empty string")
+            msg = f"{sub}: 'column' must be a non-empty string"
+            raise ValueError(msg)
         if col in seen_columns:
-            raise ValueError(f"{sub}: duplicate column {col!r}")
+            msg = f"{sub}: duplicate column {col!r}"
+            raise ValueError(msg)
         seen_columns.add(col)
         if not isinstance(dv, dict) or set(dv.keys()) != set(dim_names):
-            raise ValueError(
-                f"{sub}: 'dimension_values' keys must equal {sorted(dim_names)}, got {sorted(dv) if isinstance(dv, dict) else dv!r}"
-            )
+            msg = f"{sub}: 'dimension_values' keys must equal {sorted(dim_names)}, got {sorted(dv) if isinstance(dv, dict) else dv!r}"
+            raise ValueError(msg)
         for dn, dval in dv.items():
             if not isinstance(dval, str):
-                raise ValueError(
+                msg = (
                     f"{sub}.dimension_values[{dn!r}]: must be a string, got {type(dval).__name__}"
                 )
+                raise ValueError(msg)
         value_tuple = tuple(dv[dn] for dn in dim_names)
         if value_tuple in seen_value_tuples:
-            raise ValueError(
-                f"{sub}: duplicate dimension-value tuple {value_tuple} — every mapping must be unique"
-            )
+            msg = f"{sub}: duplicate dimension-value tuple {value_tuple} — every mapping must be unique"
+            raise ValueError(msg)
         seen_value_tuples.add(value_tuple)
         mappings.append(ColumnMapping(column=col, dimension_values=dict(dv)))
     return mappings
@@ -416,7 +434,7 @@ def validate_against_schema(
 # ---------------------------------------------------------------------------
 
 
-def apply_proposal(
+def apply_proposal(  # noqa: C901
     conn: Any,
     suggestion: TidySuggestion,
     *,
@@ -456,7 +474,8 @@ def apply_proposal(
     show a "would create N rows" message without touching state.
     """
     if mode not in ("table", "view"):
-        raise ValueError(f"mode must be 'view' or 'table', got {mode!r}")
+        msg = f"mode must be 'view' or 'table', got {mode!r}"
+        raise ValueError(msg)
     # A view's body references its source by name. Renaming or dropping
     # the source while the long form is a view leaves a dangling reference
     # — or, for ``replace`` (which renames the long form into the source's
@@ -473,11 +492,12 @@ def apply_proposal(
             "replace": "replacing",
             "drop": "dropping",
         }[source_disposition.mode]
-        raise ValueError(
+        msg = (
             f"source disposition {source_disposition.mode!r} requires --as "
             f"table: a view references its source by name, so {verb} "
             f"the source would leave the view {consequence}."
         )
+        raise ValueError(msg)
     ddl = suggestion.build_sql(mode)
 
     final_target_name = (
@@ -516,21 +536,23 @@ def apply_proposal(
         # Anything outside that range still indicates a builder bug.
         if suggestion.include_nulls:
             if target_rows != expected:
-                raise RuntimeError(
+                msg = (
                     f"Reshape verification failed for {suggestion.target_object_name!r}: "
                     f"expected {expected} rows ({source_rows} source rows × "
                     f"{len(suggestion.column_mappings)} mapped columns), got {target_rows}. "
                     f"This usually means id_columns omits a column whose values "
                     f"duplicate or drop rows."
                 )
+                raise RuntimeError(msg)
         else:
             if target_rows < 0 or target_rows > expected:
-                raise RuntimeError(
+                msg = (
                     f"Reshape verification failed for {suggestion.target_object_name!r}: "
                     f"got {target_rows} rows, but with include_nulls=False the result "
                     f"must sit between 0 and {expected} (source × mapped columns). "
                     f"An out-of-range count signals a builder bug."
                 )
+                raise RuntimeError(msg)
         source_renamed_to: str | None = None
         if source_disposition.mode == "rename":
             assert source_disposition.new_name is not None
@@ -616,7 +638,7 @@ def _alter_keyword(conn: Any, name: str) -> str:
     return "VIEW" if _object_kind(conn, name) == "view" else "TABLE"
 
 
-def update_schema_yaml_for_apply(
+def update_schema_yaml_for_apply(  # noqa: C901
     project_dir: str,
     *,
     source_table: str,
@@ -749,10 +771,11 @@ def resolve_source_disposition(
     """
     active = sum([keep, rename_to is not None, replace, drop])
     if active > 1:
-        raise ValueError(
+        msg = (
             "--keep-source, --rename-source, --replace-source, and "
             "--drop-source are mutually exclusive"
         )
+        raise ValueError(msg)
     if rename_to is not None:
         return SourceDisposition(mode="rename", new_name=rename_to)
     if replace:

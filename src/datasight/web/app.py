@@ -176,7 +176,8 @@ def validate_session_id(session_id: str) -> str:
         If the session ID contains invalid characters or is too long.
     """
     if not _SESSION_ID_RE.match(session_id) or len(session_id) > 128:
-        raise InvalidSessionIdError(f"Invalid session_id: {session_id!r}")
+        msg = f"Invalid session_id: {session_id!r}"
+        raise InvalidSessionIdError(msg)
     return session_id
 
 
@@ -454,7 +455,8 @@ def _quote_dashboard_filter_identifier(identifier: str) -> str:
     support only simple result column names here.
     """
     if not _DASHBOARD_FILTER_COLUMN_RE.match(identifier):
-        raise ValueError(f"Invalid dashboard filter column: {identifier!r}")
+        msg = f"Invalid dashboard filter column: {identifier!r}"
+        raise ValueError(msg)
     return f'"{identifier}"'
 
 
@@ -477,7 +479,8 @@ def _build_dashboard_filter_condition(filter_data: dict[str, Any]) -> str | None
         return None
     op = str(filter_data.get("operator") or "eq").strip().lower()
     if op not in _DASHBOARD_FILTER_OPS:
-        raise ValueError(f"Unsupported dashboard filter operator: {op}")
+        msg = f"Unsupported dashboard filter operator: {op}"
+        raise ValueError(msg)
 
     quoted_column = _quote_dashboard_filter_identifier(column)
     value = filter_data.get("value")
@@ -758,7 +761,7 @@ def init_llm_client(state: AppState) -> None:
         state.llm_provider = ""
 
 
-async def _build_project_health(state: AppState) -> dict[str, Any]:
+async def _build_project_health(state: AppState) -> dict[str, Any]:  # noqa: C901
     checks: list[dict[str, Any]] = []
 
     def add_check(name: str, ok: bool, detail: str, category: str, remediation: str) -> None:
@@ -972,7 +975,7 @@ async def _get_cached_insight(
 # ---------------------------------------------------------------------------
 
 
-async def load_project(project_dir: str, state: AppState) -> dict[str, Any]:
+async def load_project(project_dir: str, state: AppState) -> dict[str, Any]:  # noqa: C901
     """Load a project directory, initializing DB connection and schema.
 
     Parameters
@@ -1010,7 +1013,8 @@ async def load_project(project_dir: str, state: AppState) -> dict[str, Any]:
     # Reinitialize LLM client
     init_llm_client(state)
     if state.llm_client is None:
-        raise ProjectError("Failed to initialize LLM client. Check API key and provider settings.")
+        msg = "Failed to initialize LLM client. Check API key and provider settings."
+        raise ProjectError(msg)
 
     # Validate database file exists for file-based databases
     db_path = settings.database.path
@@ -1018,7 +1022,8 @@ async def load_project(project_dir: str, state: AppState) -> dict[str, Any]:
         if not os.path.isabs(db_path):
             db_path = str(Path(project_dir) / db_path)
         if not os.path.exists(db_path):
-            raise ProjectError(f"Database file not found: {db_path}")
+            msg = f"Database file not found: {db_path}"
+            raise ProjectError(msg)
 
     state.sql_dialect = settings.database.sql_dialect
 
@@ -1030,7 +1035,8 @@ async def load_project(project_dir: str, state: AppState) -> dict[str, Any]:
         )
     except Exception as e:
         logger.exception("Failed to create SQL runner")
-        raise ProjectError(f"Failed to connect to database: {e}") from e
+        msg = f"Failed to connect to database: {e}"
+        raise ProjectError(msg) from e
 
     state.project_dir = project_dir
     add_recent_project(project_dir)
@@ -1191,7 +1197,8 @@ async def execute_tool_web(
     Returns (result_text_for_llm, optional_html_for_ui, optional_chart_html, meta, plotly_spec).
     """
     if state.sql_runner is None:
-        raise ConfigurationError("SQL runner not initialized")
+        msg = "SQL runner not initialized"
+        raise ConfigurationError(msg)
 
     result = await execute_tool(
         name,
@@ -1350,7 +1357,7 @@ def _truncate_session_at_turn(
     del messages[msg_cut:]
 
 
-async def generate_chat_response(
+async def generate_chat_response(  # noqa: C901
     message: str,
     session_id: str,
     state: AppState,
@@ -1359,7 +1366,8 @@ async def generate_chat_response(
 ) -> AsyncIterator[str]:
     """Generate SSE events for a chat message."""
     if state.llm_client is None:
-        raise ConfigurationError("LLM not configured. Open Settings to add your API key.")
+        msg = "LLM not configured. Open Settings to add your API key."
+        raise ConfigurationError(msg)
 
     messages = state.get_session_messages(session_id)
     conv = state.conversations.get(session_id) if state.conversations else None
@@ -2387,7 +2395,7 @@ async def save_explore_as_project(request: Request, state: AppState = Depends(ge
 
 
 @app.post("/api/add-files")
-async def add_files_endpoint(request: Request, state: AppState = Depends(get_state)):
+async def add_files_endpoint(request: Request, state: AppState = Depends(get_state)):  # noqa: C901
     """Add files/tables to the current session (explore or project).
 
     Request body:
@@ -2500,7 +2508,7 @@ def _normalize_measure_override_text(text: str) -> str:
     return normalized
 
 
-def _validate_measure_override_entries(
+def _validate_measure_override_entries(  # noqa: C901
     entries: list[dict[str, Any]],
     schema_info: list[dict[str, Any]],
 ) -> tuple[list[str], list[str]]:
@@ -2695,7 +2703,7 @@ async def explore_status(state: AppState = Depends(get_state)):
 
 
 @app.post("/api/explore/generate-project")
-async def generate_project(request: Request, state: AppState = Depends(get_state)):
+async def generate_project(request: Request, state: AppState = Depends(get_state)):  # noqa: C901
     """Save ephemeral session as a project with LLM-generated documentation.
 
     Streams SSE events for progress, token output, and completion.
@@ -2710,7 +2718,7 @@ async def generate_project(request: Request, state: AppState = Depends(get_state
     project_name = body.get("name")
     user_description = body.get("description")
 
-    async def generate():
+    async def generate():  # noqa: C901
         try:
             # Validate state
             if state.sql_runner is None:
@@ -2840,7 +2848,7 @@ async def preview_table(table_name: str, state: AppState = Depends(get_state)):
 
 
 @app.get("/api/column-stats/{table_name}/{column_name}")
-async def column_stats(table_name: str, column_name: str, state: AppState = Depends(get_state)):
+async def column_stats(table_name: str, column_name: str, state: AppState = Depends(get_state)):  # noqa: C901
     """Return basic statistics for a column."""
     valid_tables = {t["name"] for t in state.schema_info}
     if table_name not in valid_tables:
@@ -3044,7 +3052,8 @@ def _tidy_select_body(suggestion: Any) -> str:
     ddl = suggestion.build_sql("table")
     match = re.search(r'CREATE OR REPLACE (?:TABLE|VIEW) "[^"]+" AS\n', ddl)
     if not match:
-        raise ValueError("Could not extract SELECT body from reshape DDL")
+        msg = "Could not extract SELECT body from reshape DDL"
+        raise ValueError(msg)
     body = ddl[match.end() :].rstrip()
     if body.endswith(";"):
         body = body[:-1]
@@ -3106,7 +3115,7 @@ async def tidy_detect(table: str = "", state: AppState = Depends(get_state)):
 
 
 @app.post("/api/tidy/propose")
-async def tidy_propose(request: Request, state: AppState = Depends(get_state)):
+async def tidy_propose(request: Request, state: AppState = Depends(get_state)):  # noqa: C901
     """Stream LLM-augmented tidy proposals for one table.
 
     Body: ``{table: str, sample_rows?: int}``. ``sample_rows > 0`` opts the
@@ -3247,7 +3256,7 @@ async def tidy_render_sql(request: Request, state: AppState = Depends(get_state)
 
 
 @app.post("/api/tidy/apply")
-async def tidy_apply(request: Request, state: AppState = Depends(get_state)):
+async def tidy_apply(request: Request, state: AppState = Depends(get_state)):  # noqa: C901
     """Apply one tidy proposal and refresh schema state.
 
     Mirrors ``datasight tidy review --apply-all`` for a single proposal:
@@ -3488,7 +3497,7 @@ async def validate_measure_overrides_editor(
 
 
 @app.post("/api/measures/editor/upsert")
-async def upsert_measure_override_editor(request: Request, state: AppState = Depends(get_state)):
+async def upsert_measure_override_editor(request: Request, state: AppState = Depends(get_state)):  # noqa: C901
     """Upsert a single measure override entry into the current editor text."""
     if not state.project_loaded or not state.project_dir:
         return {"ok": False, "error": "No project loaded"}
@@ -3766,7 +3775,7 @@ async def run_dashboard_card(request: Request, state: AppState = Depends(get_sta
 
 
 @app.post("/api/dashboard/filter-values")
-async def get_dashboard_filter_values(request: Request, state: AppState = Depends(get_state)):
+async def get_dashboard_filter_values(request: Request, state: AppState = Depends(get_state)):  # noqa: C901
     """Return distinct post-aggregation values for a dashboard filter column."""
     if state.sql_runner is None:
         return {"ok": False, "error": "SQL runner not initialized", "values": []}
@@ -4071,7 +4080,7 @@ async def get_project_health(state: AppState = Depends(get_state)):
 
 
 @app.post("/api/settings/llm")
-async def update_llm_settings(request: Request, state: AppState = Depends(get_state)):
+async def update_llm_settings(request: Request, state: AppState = Depends(get_state)):  # noqa: C901
     """Update LLM configuration and reinitialize the client.
 
     Request body:

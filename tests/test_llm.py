@@ -678,7 +678,8 @@ def test_openai_compat_missing_openai_package():
 
     def fake_import(name, *args, **kwargs):
         if name == "openai":
-            raise ImportError("no openai")
+            msg = "no openai"
+            raise ImportError(msg)
         return real_import(name, *args, **kwargs)
 
     with patch.object(builtins, "__import__", side_effect=fake_import):

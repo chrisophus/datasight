@@ -50,7 +50,7 @@ from datasight.cli_helpers import format_epilog
     default=None,
     help="Write the quality audit to a file instead of stdout.",
 )
-def quality(project_dir, table, output_format, output_path):
+def quality(project_dir, table, output_format, output_path):  # noqa: C901
     """Audit data quality - nulls, suspicious ranges, and date coverage.
 
     Also checks temporal completeness when time_series.yaml defines expected
@@ -76,7 +76,8 @@ def quality(project_dir, table, output_format, output_path):
         if table:
             table_info = find_table_info(schema_info, table)
             if table_info is None:
-                raise click.ClickException(f"Table not found: {table}")
+                msg = f"Table not found: {table}"
+                raise click.ClickException(msg)
             schema_info = [table_info]
         base = await build_quality_overview(schema_info, sql_runner.run_sql)
         ts_configs = time_series_configs
