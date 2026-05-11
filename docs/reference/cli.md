@@ -66,6 +66,7 @@ datasight [OPTIONS] COMMAND [ARGS]...
 - `measures`: Surface likely measures and default aggregations.
 - `quality`: Audit data quality - nulls, suspicious ranges, and date coverage.
 - `tidy`: Detect untidy column shapes and reshape into long form.
+- `grounding`: Detect and repair drift between grounding files and the live schema.
 - `integrity`: Audit cross-table referential integrity - keys, orphans, and join risks.
 - `distribution`: Profile value distributions - percentiles, outliers, and measure flags.
 - `validate`: Run declarative validation rules against the database.
@@ -437,10 +438,16 @@ Runs each question from queries.yaml through the full LLM pipeline,
 executes the generated SQL, and compares results against expected values.
 Use this to validate correctness across different models and providers.
 
+Before the LLM phase, runs a static schema-drift check that flags
+references to columns or tables that no longer exist in the live
+database. ``--static-only`` skips the LLM phase entirely;
+``--skip-grounding-check`` skips the static check.
+
 Examples:
 
 ```
 datasight verify
+datasight verify --static-only
 datasight verify --queries verification.yaml
 datasight verify --model gpt-4o
 ```
@@ -470,6 +477,8 @@ datasight verify [OPTIONS]
 | `--project-dir` | Project directory containing .env and queries.yaml. Default: `.`. |
 | `--model` | Model name (overrides .env). |
 | `--queries` | Path to queries YAML file (default: queries.yaml in project dir). |
+| `--static-only` | Run only the cheap schema-drift check (no LLM, no query execution). Reports unresolved column/table references in queries.yaml, schema_description.md, and time_series.yaml against the live DB. |
+| `--skip-grounding-check` | Skip the static drift check that normally runs before the LLM phase. |
 
 ### `datasight ask`
 
@@ -772,6 +781,100 @@ datasight tidy review [OPTIONS]
 | `--replace-source` | Drop the source after a successful reshape and rename the long-form table to take the source's old name. Downstream code that referenced the source keeps working without edits. Requires '--as table' — a view's body references its source by name. |
 | `--drop-source` | Drop the source after a successful reshape; the long form keeps its target name. Pick this when the new shape is the canonical one going forward and you don't need to preserve the source's name. Requires '--as table'. NOTE: previously this flag carried the semantics now moved to '--replace-source'; scripts depending on the old behavior should switch to '--replace-source'. |
 | `--sample` | Send N sample rows per candidate to the configured LLM provider (default 0). Sample values get sent over the network — opt in only when the LLM seeing the values is acceptable. |
+| `--model` | LLM model name to use for the propose-reshapes call and the post-apply grounding-repair call (overrides .env). Useful when different models suit each workload — see docs/use/concepts/choosing-an-llm.md. |
+
+### `datasight grounding`
+
+Detect and repair drift between grounding files and the live schema.
+
+Grounding files (``queries.yaml``, ``schema_description.md``,
+``time_series.yaml``) describe the database to the LLM. When the
+schema changes (typically after ``datasight tidy review``), these
+files fall out of sync and the agent silently hallucinates against
+columns that no longer exist.
+
+- ``check`` reports drift without changing anything.
+- ``repair`` asks the configured LLM to rewrite the stale files
+  against the current schema, validates each proposed query, and
+  writes atomically after you confirm the diff.
+
+Examples:
+
+```
+datasight grounding check
+datasight grounding repair
+datasight grounding repair --model qwen3.6
+datasight grounding repair --from-csv load_data.csv
+datasight grounding repair --dry-run
+```
+
+```bash
+datasight grounding [OPTIONS] COMMAND [ARGS]...
+```
+
+**Subcommands**
+
+- `check`: Report stale references in grounding files against the live schema.
+- `repair`: Run the LLM grounding repair against an existing drift.
+
+#### `datasight grounding check`
+
+Report stale references in grounding files against the live schema.
+
+Static — no LLM, no query execution. Exits 0 when grounding is
+clean, 1 when drift is detected. Use ``datasight grounding
+repair`` to fix what this command finds.
+
+Examples:
+
+```
+datasight grounding check
+datasight grounding check --project-dir /path/to/project
+```
+
+```bash
+datasight grounding check [OPTIONS]
+```
+
+**Parameters**
+
+| Name | Details |
+| --- | --- |
+| `--project-dir` | Project directory containing .env and grounding files. Default: `.`. |
+
+#### `datasight grounding repair`
+
+Run the LLM grounding repair against an existing drift.
+
+Reads the pre-tidy schema snapshot persisted by the most recent
+apply (``.datasight/grounding_snapshot.json``). When no snapshot
+is on file, ``--from-csv`` lets you supply the wide-form schema
+by pointing at the source CSV(s).
+
+Shows the unified diff and prompts for confirmation before writing.
+Use ``--dry-run`` to skip the write entirely.
+
+Examples:
+
+```
+datasight grounding repair
+datasight grounding repair --model qwen3.6
+datasight grounding repair --from-csv load_data.csv
+datasight grounding repair --dry-run
+```
+
+```bash
+datasight grounding repair [OPTIONS]
+```
+
+**Parameters**
+
+| Name | Details |
+| --- | --- |
+| `--project-dir` | Project directory containing .env and grounding files. Default: `.`. |
+| `--model` | LLM model name to use for the repair (overrides .env). Useful for retrying with a different model after a timeout. |
+| `--from-csv` | Derive the pre-tidy schema from CSV headers when no snapshot is available. Pass once per source file (e.g. the wide-format input the apply consumed). Each CSV becomes a single table named after the file stem. Combinable with the snapshot — snapshot tables win on conflict. |
+| `--dry-run` | Show drift + LLM proposal + diff, but don't write any files. |
 
 ### `datasight integrity`
 

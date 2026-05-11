@@ -20,6 +20,7 @@ from datasight.cli_helpers import (
     resolve_settings as resolve_settings,
 )
 from datasight.config import create_sql_runner_from_settings
+from datasight.cost import build_cost_data, log_query_cost
 from datasight.data_profile import (
     build_measure_overview,
     build_prompt_recipes,
@@ -117,7 +118,6 @@ async def run_ask_pipeline(
         load_schema_description,
         load_time_series_config,
     )
-    from datasight.cost import build_cost_data, log_query_cost
     from datasight.data_profile import format_time_series_prompt_context
     from datasight.prompts import build_system_prompt
     from datasight.query_log import QueryLogger
@@ -257,6 +257,7 @@ async def run_ask_pipeline(
             result.total_output_tokens,
             cache_creation_input_tokens=result.total_cache_creation_input_tokens,
             cache_read_input_tokens=result.total_cache_read_input_tokens,
+            elapsed_seconds=result.total_elapsed_seconds,
             provider=settings.llm.provider,
         )
         cost_data = build_cost_data(
@@ -266,6 +267,7 @@ async def run_ask_pipeline(
             result.total_output_tokens,
             cache_creation_input_tokens=result.total_cache_creation_input_tokens,
             cache_read_input_tokens=result.total_cache_read_input_tokens,
+            elapsed_seconds=result.total_elapsed_seconds,
             provider=settings.llm.provider,
         )
         query_logger.log_cost(
@@ -1157,8 +1159,6 @@ def build_cli_provenance(
     project_dir: str,
     provider: str | None = None,
 ) -> dict[str, Any]:
-    from datasight.cost import build_cost_data
-
     cost_data = build_cost_data(
         model,
         result.api_calls,
@@ -1166,6 +1166,7 @@ def build_cli_provenance(
         result.total_output_tokens,
         cache_creation_input_tokens=result.total_cache_creation_input_tokens,
         cache_read_input_tokens=result.total_cache_read_input_tokens,
+        elapsed_seconds=result.total_elapsed_seconds,
         provider=provider,
     )
     tools = []
@@ -1206,6 +1207,8 @@ def build_cli_provenance(
             "api_calls": result.api_calls,
             "input_tokens": result.total_input_tokens,
             "output_tokens": result.total_output_tokens,
+            "elapsed_seconds": cost_data.get("elapsed_seconds"),
+            "output_tokens_per_sec": cost_data.get("output_tokens_per_sec"),
             "estimated_cost": cost_data.get("estimated_cost"),
         },
         "warnings": warnings,
@@ -1313,7 +1316,7 @@ click.rich_click.COMMAND_GROUPS = {
     "datasight": [
         {
             "name": "Quick start",
-            "commands": ["inspect", "run"],
+            "commands": ["inspect", "run", "config"],
         },
         {
             "name": "Project setup",
@@ -1322,6 +1325,10 @@ click.rich_click.COMMAND_GROUPS = {
         {
             "name": "AI-powered",
             "commands": ["ask", "verify"],
+        },
+        {
+            "name": "Schema curation",
+            "commands": ["tidy", "grounding"],
         },
         {
             "name": "Data analysis (no LLM)",
@@ -1341,7 +1348,7 @@ click.rich_click.COMMAND_GROUPS = {
         },
         {
             "name": "Session history",
-            "commands": ["log", "export", "report"],
+            "commands": ["log", "export", "report", "session"],
         },
         {
             "name": "Demo datasets",
@@ -1430,6 +1437,7 @@ def _register_commands() -> None:
     from datasight.cli_commands.doctor import doctor
     from datasight.cli_commands.export import export
     from datasight.cli_commands.generate import generate
+    from datasight.cli_commands.grounding import grounding
     from datasight.cli_commands.init import init
     from datasight.cli_commands.inspect import inspect
     from datasight.cli_commands.integrity import integrity
@@ -1459,6 +1467,7 @@ def _register_commands() -> None:
     cli.add_command(measures)
     cli.add_command(quality)
     cli.add_command(tidy)
+    cli.add_command(grounding)
     cli.add_command(integrity)
     cli.add_command(distribution)
     cli.add_command(validate)
