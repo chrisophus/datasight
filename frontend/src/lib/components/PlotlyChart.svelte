@@ -76,6 +76,32 @@
     };
   }
 
+  const STALE_CHUNK_RELOAD_KEY = "datasight-stale-chunk-reload-once";
+
+  function isStaleDynamicImportError(error: unknown): boolean {
+    const msg = error instanceof Error ? error.message : String(error);
+    return (
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("error loading dynamically imported module")
+    );
+  }
+
+  /** After a frontend rebuild, Vite chunk hashes change; a long-lived tab may 404 the old plotly chunk. */
+  async function importPlotly() {
+    try {
+      const mod = await import("plotly.js-dist-min");
+      sessionStorage.removeItem(STALE_CHUNK_RELOAD_KEY);
+      return mod.default;
+    } catch (error) {
+      if (isStaleDynamicImportError(error) && !sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY)) {
+        sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, "1");
+        location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  }
+
   function animationFrame(): Promise<void> {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
@@ -136,7 +162,7 @@
       if (cancelled) return;
       isRendering = true;
       try {
-        const Plotly = (await import("plotly.js-dist-min")).default;
+        const Plotly = await importPlotly();
         if (cancelled) return;
         const cloned = cloneSpec(renderSpec);
         const layout = themedLayout(cloned.layout || {}, currentTheme());
@@ -166,9 +192,11 @@
     render();
     resizeObserver = new ResizeObserver(() => {
       if (!hasRendered) return;
-      void import("plotly.js-dist-min").then(({ default: Plotly }) => {
-        if (!cancelled) Plotly.Plots?.resize(plotEl);
-      });
+      void importPlotly()
+        .then((Plotly) => {
+          if (!cancelled) Plotly.Plots?.resize(plotEl);
+        })
+        .catch(() => {});
     });
     resizeObserver.observe(chart);
     themeObserver = new MutationObserver(() => void render());
@@ -182,13 +210,15 @@
       resizeObserver?.disconnect();
       themeObserver?.disconnect();
       plotEl.removeAllListeners?.("plotly_click");
-      void import("plotly.js-dist-min").then(({ default: Plotly }) => {
-        try {
-          Plotly.purge(plotEl);
-        } catch {
-          // ignore cleanup failures
-        }
-      });
+      void importPlotly()
+        .then((Plotly) => {
+          try {
+            Plotly.purge(plotEl);
+          } catch {
+            // ignore cleanup failures
+          }
+        })
+        .catch(() => {});
     };
   });
 </script>

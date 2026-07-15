@@ -831,8 +831,8 @@ def create_files_session_for_settings(
       files already live on a shared filesystem.
     - ``duckdb`` / ``sqlite`` / no settings: local ephemeral DuckDB session
       (the long-standing default).
-    - ``postgres`` / ``flightsql``: fall back to DuckDB with a warning —
-      those backends can't read arbitrary local files.
+    - ``postgres`` / ``flightsql`` / ``redash``: fall back to DuckDB with a
+      warning — those backends can't read arbitrary local files.
     """
     if import_mode not in _VALID_IMPORT_MODES:
         msg = f"Unsupported import mode: {import_mode}"

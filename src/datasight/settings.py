@@ -15,7 +15,7 @@ from typing import Literal, cast
 from dotenv import load_dotenv
 
 from datasight.exceptions import ConfigurationError
-from datasight.runner import DEFAULT_SPARK_MAX_RESULT_BYTES
+from datasight.runner import DEFAULT_QUERY_TIMEOUT, DEFAULT_SPARK_MAX_RESULT_BYTES
 
 
 def _safe_int(value: str, default: int) -> int:
@@ -74,6 +74,12 @@ _PROJECT_ENV_VARS = [
     "SPARK_REMOTE",
     "SPARK_TOKEN",
     "SPARK_MAX_RESULT_BYTES",
+    "REDASH_BASE_URL",
+    "REDASH_API_KEY",
+    "REDASH_DATA_SOURCE_ID",
+    "REDASH_SQL_DIALECT",
+    "REDASH_QUERY_TIMEOUT",
+    "REDASH_POLL_INTERVAL",
     # LLM settings
     "LLM_PROVIDER",
     "LLM_TIMEOUT",
@@ -169,7 +175,7 @@ def restore_original_env() -> None:
 # exists only for static typing and must be updated by hand when a provider
 # is added or removed (Python can't derive Literals from a runtime set).
 LLMProvider = Literal["anthropic", "ollama", "github", "openai"]
-DBMode = Literal["duckdb", "sqlite", "postgres", "flightsql", "spark"]
+DBMode = Literal["duckdb", "sqlite", "postgres", "flightsql", "spark", "redash"]
 
 # Mapping from database mode to SQL dialect for query generation
 DB_MODE_TO_DIALECT: dict[str, str] = {
@@ -178,6 +184,7 @@ DB_MODE_TO_DIALECT: dict[str, str] = {
     "postgres": "postgres",
     "flightsql": "duckdb",  # Flight SQL uses DuckDB dialect
     "spark": "spark",
+    "redash": "postgres",  # Default warehouse dialect; overridden by REDASH_SQL_DIALECT
 }
 
 
@@ -276,9 +283,19 @@ class DatabaseSettings:
     spark_token: str | None = None
     spark_max_result_bytes: int = DEFAULT_SPARK_MAX_RESULT_BYTES
 
+    # Redash REST API (DB_MODE=redash)
+    redash_base_url: str = ""
+    redash_api_key: str = ""
+    redash_data_source_id: int = 0
+    redash_sql_dialect: str = "postgres"
+    redash_query_timeout: float = DEFAULT_QUERY_TIMEOUT
+    redash_poll_interval: float = 0.5
+
     @property
     def sql_dialect(self) -> str:
         """Get the SQL dialect for the current mode."""
+        if self.mode == "redash":
+            return self.redash_sql_dialect.strip() or "postgres"
         return DB_MODE_TO_DIALECT.get(self.mode, "duckdb")
 
 
@@ -354,8 +371,10 @@ class Settings:
                 db_mode = "flightsql"
             case "spark":
                 db_mode = "spark"
+            case "redash":
+                db_mode = "redash"
             case _:
-                valid_modes = "duckdb, sqlite, postgres, flightsql, spark"
+                valid_modes = "duckdb, sqlite, postgres, flightsql, spark, redash"
                 msg = f"Invalid DB_MODE: {db_mode_raw!r}. Valid modes: {valid_modes}"
                 raise ConfigurationError(msg)
 
@@ -397,6 +416,15 @@ class Settings:
                     os.environ.get("SPARK_MAX_RESULT_BYTES", ""),
                     DEFAULT_SPARK_MAX_RESULT_BYTES,
                 ),
+                redash_base_url=os.environ.get("REDASH_BASE_URL", ""),
+                redash_api_key=os.environ.get("REDASH_API_KEY", ""),
+                redash_data_source_id=_safe_int(os.environ.get("REDASH_DATA_SOURCE_ID", ""), 0),
+                redash_sql_dialect=os.environ.get("REDASH_SQL_DIALECT", "postgres"),
+                redash_query_timeout=_safe_float(
+                    os.environ.get("REDASH_QUERY_TIMEOUT", ""),
+                    DEFAULT_QUERY_TIMEOUT,
+                ),
+                redash_poll_interval=_safe_float(os.environ.get("REDASH_POLL_INTERVAL", ""), 0.5),
             ),
             app=AppSettings(
                 port=_safe_int(os.environ.get("PORT", ""), 8084),
@@ -429,5 +457,13 @@ class Settings:
         if self.database.mode in ("duckdb", "sqlite"):
             if not self.database.path:
                 errors.append("DB_PATH is not set")
+
+        if self.database.mode == "redash":
+            if not self.database.redash_base_url.strip():
+                errors.append("REDASH_BASE_URL is not set")
+            if not self.database.redash_api_key.strip():
+                errors.append("REDASH_API_KEY is not set")
+            if self.database.redash_data_source_id <= 0:
+                errors.append("REDASH_DATA_SOURCE_ID must be a positive integer")
 
         return errors

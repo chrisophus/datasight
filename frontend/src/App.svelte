@@ -27,7 +27,11 @@
   import { paletteStore } from "$lib/stores/palette.svelte";
   import { tidyStore } from "$lib/stores/tidy.svelte";
   import { groundingStore } from "$lib/stores/grounding.svelte";
-  import { exitExploreSession, getProjectStatus } from "$lib/api/projects";
+  import {
+    exitExploreSession,
+    getProjectStatus,
+    waitForProjectAutoLoad,
+  } from "$lib/api/projects";
   import { loadSettings, loadLlmConfig } from "$lib/api/settings";
   import { loadSchema, loadQueries, loadRecipes } from "$lib/api/schema";
   import {
@@ -70,6 +74,10 @@
   let exportMode = $state(false);
   let exportExcludeIndices = $state(new Set<number>());
   let booting = $state(true);
+  /** After minimal bootstrap; server-side `--project-dir` load still running (`loading: true`). */
+  let awaitingAutoLoad = $state(false);
+  /** Shown under “Loading…” during slow startup (e.g. Redash schema introspection). */
+  let bootHint = $state("");
   let fromLanding = $state(false);
 
   function toggleTheme() {
@@ -267,26 +275,40 @@
         loadSettings(),
         loadLlmConfig(),
       ]);
+      booting = false;
 
-      if (status.loaded) {
+      let resolved = status;
+      if (status.loading) {
+        awaitingAutoLoad = true;
+        bootHint =
+          "Discovering database schema — remote backends can take several minutes.";
+        resolved = await waitForProjectAutoLoad(status);
+        bootHint = "";
+        awaitingAutoLoad = false;
+      }
+
+      if (resolved.loaded) {
         sessionStore.projectLoaded = true;
-        sessionStore.currentProjectPath = status.path;
-        sessionStore.isEphemeralSession = status.is_ephemeral;
-        sessionStore.hasTimeSeries = Boolean(status.has_time_series);
-        if (status.sql_dialect) {
-          sessionStore.sqlDialect = status.sql_dialect;
+        sessionStore.currentProjectPath = resolved.path;
+        sessionStore.isEphemeralSession = resolved.is_ephemeral;
+        sessionStore.hasTimeSeries = Boolean(resolved.has_time_series);
+        if (resolved.sql_dialect) {
+          sessionStore.sqlDialect = resolved.sql_dialect;
         }
-        if (status.tables) {
-          sessionStore.ephemeralTablesInfo = status.tables;
+        if (resolved.tables) {
+          sessionStore.ephemeralTablesInfo = resolved.tables;
         }
-        await onProjectReady(status.path ?? undefined);
+        await onProjectReady(resolved.path ?? undefined);
         // Restore previous conversation on reload
         await maybeRestoreSession();
       }
     } catch {
       // Server not running — show landing page
+      awaitingAutoLoad = false;
     } finally {
+      bootHint = "";
       booting = false;
+      awaitingAutoLoad = false;
     }
   });
 
@@ -546,8 +568,22 @@
 <main class="flex flex-1 overflow-hidden min-h-0"
   style="background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 86%, var(--surface) 14%), var(--bg));">
   {#if booting}
-    <div class="flex-1 flex items-center justify-center text-text-secondary">
+    <div
+      class="flex-1 flex flex-col items-center justify-center gap-2 text-text-secondary px-4 text-center"
+    >
       <div class="text-sm">Loading...</div>
+      {#if bootHint}
+        <div class="text-xs max-w-md opacity-90">{bootHint}</div>
+      {/if}
+    </div>
+  {:else if awaitingAutoLoad}
+    <div
+      class="flex-1 flex flex-col items-center justify-center gap-2 text-text-secondary px-4 text-center"
+    >
+      <div class="text-sm">Connecting to project…</div>
+      {#if bootHint}
+        <div class="text-xs max-w-md opacity-90">{bootHint}</div>
+      {/if}
     </div>
   {:else if sessionStore.projectLoaded}
     <Sidebar onOpenMeasureEditor={() => (measureEditorOpen = true)} />

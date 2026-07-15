@@ -10,7 +10,7 @@ datasight is an AI-powered data exploration tool. Users ask questions in natural
 - **FastAPI + uvicorn** for the web server with SSE streaming
 - **Svelte 5 + TypeScript + Tailwind CSS** frontend — built with Vite, served by FastAPI
 - **LLM backends**: Anthropic (default), GitHub Models, Ollama — all via a common `LLMClient` abstraction in `datasight.llm`
-- **Database backends**: DuckDB (default), SQLite, PostgreSQL, Flight SQL — all via `SqlRunner` implementations in `datasight.runner`
+- **Database backends**: DuckDB (default), SQLite, PostgreSQL, Flight SQL, Spark Connect, Redash HTTP API — via `SqlRunner` / `RedashRunner` in `datasight.runner` / `datasight.redash_runner`
 - **Click CLI** with commands: `run`, `ask`, `init`, `demo`, `generate`, `verify`, `profile`, `quality`, `doctor`, `export`, `log`
 
 ## Repository layout

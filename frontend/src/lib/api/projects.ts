@@ -8,6 +8,8 @@ import type { TableInfo } from "$lib/stores/schema.svelte";
 
 export interface ProjectStatus {
   loaded: boolean;
+  /** True while `--project-dir` auto-load is still introspecting in the background. */
+  loading?: boolean;
   path: string | null;
   name: string | null;
   is_ephemeral: boolean;
@@ -38,6 +40,20 @@ export async function loadProject(path: string): Promise<void> {
 
 export async function getProjectStatus(): Promise<ProjectStatus> {
   return fetchJson<ProjectStatus>("/api/project");
+}
+
+/** Poll ``/api/project`` until auto-load introspection finishes or ``maxWaitMs`` elapses. */
+export async function waitForProjectAutoLoad(
+  initial: ProjectStatus,
+  maxWaitMs: number = 3_600_000,
+): Promise<ProjectStatus> {
+  let s = initial;
+  const deadline = Date.now() + maxWaitMs;
+  while (s.loading && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 500));
+    s = await getProjectStatus();
+  }
+  return s;
 }
 
 export async function loadRecentProjects(): Promise<RecentProject[]> {

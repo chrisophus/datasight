@@ -610,6 +610,10 @@ class AppState:
         # tidy_apply. Consumed by /api/tidy/grounding/repair so the LLM
         # repair prompt can show both shapes; cleared on project change.
         self.pre_tidy_schema: dict[str, set[str]] | None = None
+        # Set only during background auto-load (see _startup). Not cleared by
+        # clear_project — load_project calls clear_project first, then needs
+        # this flag until introspection finishes.
+        self.auto_loading_path: str | None = None
 
     def clear_project(self) -> None:
         """Clear project-specific state."""
@@ -1177,11 +1181,25 @@ async def _startup() -> None:
     # Check for auto-load project
     auto_load_project = os.environ.get("DATASIGHT_AUTO_LOAD_PROJECT")
     if auto_load_project:
-        try:
-            await load_project(auto_load_project, _state)
-            logger.info(f"Auto-loaded project: {auto_load_project}")
-        except ProjectError as e:
-            logger.error(f"Failed to auto-load project {auto_load_project}: {e}")
+        auto_path = auto_load_project.strip()
+
+        async def _auto_load_project_task(project_path: str) -> None:
+            """Load project without blocking ASGI startup (slow remote introspection)."""
+            _state.auto_loading_path = project_path
+            err_msg: str | None = None
+            try:
+                await load_project(project_path, _state)
+                logger.info(f"Auto-loaded project: {project_path}")
+            except ProjectError as e:
+                err_msg = str(e)
+                logger.error(f"Failed to auto-load project {project_path}: {e}")
+            except Exception as e:
+                err_msg = str(e)
+                logger.exception(f"Unexpected auto-load failure for {project_path}")
+            finally:
+                _state.auto_loading_path = None
+
+        asyncio.create_task(_auto_load_project_task(auto_path))
 
     socket_path = os.environ.get("DATASIGHT_UNIX_SOCKET", "").strip()
     port = os.environ.get("PORT", "8084")
@@ -1875,7 +1893,13 @@ async def _handle_sql_confirmation(
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return FileResponse(_INDEX_HTML, media_type="text/html")
+    # Avoid caching the SPA shell: hashed /static assets change on each build; a stale
+    # index.html or long-lived tab can otherwise request removed chunk files (e.g. plotly.min-*.js).
+    return FileResponse(
+        _INDEX_HTML,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
 
 
 @app.get("/api/schema")
@@ -2137,6 +2161,15 @@ async def get_current_project(state: AppState = Depends(get_state)):
             "name": "Quick Explore",
             "is_ephemeral": True,
             "tables": state.ephemeral_tables_info,
+            "sql_dialect": state.sql_dialect,
+        }
+    if state.auto_loading_path:
+        return {
+            "loaded": False,
+            "loading": True,
+            "path": state.auto_loading_path,
+            "name": None,
+            "is_ephemeral": False,
             "sql_dialect": state.sql_dialect,
         }
     if not state.project_loaded or state.project_dir is None:

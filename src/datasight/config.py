@@ -15,7 +15,9 @@ import yaml
 from loguru import logger
 
 from datasight.exceptions import ConfigurationError
+from datasight.redash_runner import RedashRunner
 from datasight.runner import (
+    DEFAULT_QUERY_TIMEOUT,
     DEFAULT_SPARK_MAX_RESULT_BYTES,
     CachingSqlRunner,
     DuckDBRunner,
@@ -88,13 +90,18 @@ def create_sql_runner(
     spark_remote: str = "sc://localhost:15002",
     spark_token: str | None = None,
     spark_max_result_bytes: int = DEFAULT_SPARK_MAX_RESULT_BYTES,
+    redash_base_url: str = "",
+    redash_api_key: str = "",
+    redash_data_source_id: int = 0,
+    redash_query_timeout: float = DEFAULT_QUERY_TIMEOUT,
+    redash_poll_interval: float = 0.5,
 ) -> SqlRunner:
     """Create the appropriate SqlRunner based on db_mode.
 
     Parameters
     ----------
     db_mode:
-        Database mode: "duckdb", "sqlite", "postgres", "flightsql", or "spark".
+        Database mode: "duckdb", "sqlite", "postgres", "flightsql", "spark", or "redash".
     db_path:
         Path to database file (for duckdb and sqlite modes).
     flight_*:
@@ -104,6 +111,8 @@ def create_sql_runner(
     spark_*:
         Spark Connect parameters. ``spark_max_result_bytes`` caps how much
         Arrow data is materialized client-side before truncation.
+    redash_*:
+        Redash REST API parameters (``DB_MODE=redash``).
 
     Returns
     -------
@@ -155,6 +164,24 @@ def create_sql_runner(
                 token=spark_token,
                 max_result_bytes=spark_max_result_bytes,
             )
+        case "redash":
+            base = (redash_base_url or "").strip()
+            if not base:
+                raise ConfigurationError("REDASH_BASE_URL is required for Redash mode")
+            if not (redash_api_key or "").strip():
+                raise ConfigurationError("REDASH_API_KEY is required for Redash mode")
+            if redash_data_source_id <= 0:
+                raise ConfigurationError(
+                    "REDASH_DATA_SOURCE_ID must be a positive integer for Redash mode"
+                )
+            logger.info(f"Connecting to Redash: {base} (data_source_id={redash_data_source_id})")
+            return RedashRunner(
+                base_url=base,
+                api_key=redash_api_key.strip(),
+                data_source_id=redash_data_source_id,
+                query_timeout=redash_query_timeout,
+                poll_interval=redash_poll_interval,
+            )
         case _:
             msg = f"Invalid database mode: {db_mode}"
             raise ConfigurationError(msg)
@@ -203,6 +230,11 @@ def create_sql_runner_from_settings(
         spark_remote=settings.spark_remote,
         spark_token=settings.spark_token,
         spark_max_result_bytes=settings.spark_max_result_bytes,
+        redash_base_url=settings.redash_base_url,
+        redash_api_key=settings.redash_api_key,
+        redash_data_source_id=settings.redash_data_source_id,
+        redash_query_timeout=settings.redash_query_timeout,
+        redash_poll_interval=settings.redash_poll_interval,
     )
     if sql_cache_max_bytes > 0:
         runner = CachingSqlRunner(runner, max_bytes=sql_cache_max_bytes)

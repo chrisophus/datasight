@@ -81,7 +81,7 @@ For help picking a provider, see [Choosing an LLM](../use/concepts/choosing-an-l
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_MODE` | `duckdb` | Database type: `duckdb`, `sqlite`, `postgres`, `flightsql`, or `spark` |
+| `DB_MODE` | `duckdb` | Database type: `duckdb`, `sqlite`, `postgres`, `flightsql`, `spark`, or `redash` |
 | `DB_PATH` | `./database.duckdb` | Path to DuckDB or SQLite file (used when `DB_MODE=duckdb` or `sqlite`) |
 
 #### PostgreSQL settings (when `DB_MODE=postgres`)
@@ -117,6 +117,21 @@ Requires the `spark` extra: `pip install 'datasight[spark]'`.
 | `SPARK_REMOTE` | `sc://localhost:15002` | Spark Connect URI (e.g. `sc://spark.example.com:15002`) |
 | `SPARK_TOKEN` | — | Optional bearer token for Spark Connect auth |
 | `SPARK_MAX_RESULT_BYTES` | `104857600` | Client-side cap on Arrow result size (100 MiB default). Results above this are truncated to protect the web server on multi-TB backends. |
+
+#### Redash API settings (when `DB_MODE=redash`)
+
+Execute SQL through [Redash](https://redash.io/)’s HTTP API instead of connecting to a warehouse directly. Use a **user API key** with permission to run queries on the chosen data source.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDASH_BASE_URL` | *(required)* | Redash server origin, e.g. `https://redash.example.com` (no trailing slash) |
+| `REDASH_API_KEY` | *(required)* | User API key (`Authorization: Key …`) |
+| `REDASH_DATA_SOURCE_ID` | *(required)* | Numeric Redash data source ID SQL should run against |
+| `REDASH_SQL_DIALECT` | `postgres` | Warehouse dialect for prompts and sqlglot validation (`postgres`, `mysql`, `spark`, `bigquery`, `snowflake`, etc.). Must match the engine behind the Redash data source. |
+| `REDASH_QUERY_TIMEOUT` | `120` | Seconds to wait for Redash job completion (same scale as other backends’ query timeouts). |
+| `REDASH_POLL_INTERVAL` | `0.5` | Seconds between `GET /api/jobs/…` polls while a query is running. |
+
+Schema introspection issues one Redash job per probe query; on large warehouses prefer narrowing with `schema.yaml`. Exported Python sessions cannot embed API secrets — replays need a direct warehouse connection or your own Redash client code.
 
 ### Other settings
 

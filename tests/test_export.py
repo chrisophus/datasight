@@ -497,6 +497,15 @@ def test_export_python_unknown_db_mode_emits_todo_scaffold():
     assert "raise NotImplementedError" in script
 
 
+def test_export_python_redash_mode_documents_api_stub():
+    events, _ = _python_export_events()
+    script = export_session_python(events, title="t", db_path="", db_mode="redash")
+    ast.parse(script)
+    assert "Database mode: redash" in script
+    assert "Redash" in script
+    assert "raise NotImplementedError" in script
+
+
 def test_export_python_respects_exclude_indices():
     events, _ = _python_export_events()
     script = export_session_python(

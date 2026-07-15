@@ -2,8 +2,8 @@
 SQL runners for datasight.
 
 Provides a common async interface for executing SQL queries against local
-DuckDB files, remote Flight SQL servers, PostgreSQL, SQLite databases, or
-Apache Spark via Spark Connect.
+DuckDB files, remote Flight SQL servers, PostgreSQL, SQLite databases,
+Apache Spark via Spark Connect, or Redash's HTTP API.
 """
 
 from __future__ import annotations

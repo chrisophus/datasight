@@ -14,6 +14,33 @@ from datasight import cli
 from datasight.cli_helpers import format_epilog
 
 
+async def _async_probe_select_one_and_close(sql_runner: object) -> None:
+    """Run ``SELECT 1`` then release async HTTP clients on the same event loop.
+
+    ``RedashRunner`` uses ``httpx.AsyncClient``. If we ``asyncio.run(run_sql)``
+    and then call sync ``close()`` on the runner, ``RedashRunner.close()`` may
+    call ``asyncio.run(aclose())`` on a client still bound to the *previous*
+    (now closed) loop, surfacing ``RuntimeError: Event loop is closed``.
+    Performing ``aclose()`` here avoids that.
+    """
+    try:
+        run_sql = getattr(sql_runner, "run_sql")
+        await run_sql("SELECT 1 AS ok")
+    finally:
+        inner: object | None = sql_runner
+        seen: set[int] = set()
+        while inner is not None and id(inner) not in seen:
+            seen.add(id(inner))
+            aclose_fn = getattr(inner, "aclose", None)
+            if callable(aclose_fn):
+                await aclose_fn()
+                break
+            inner = getattr(inner, "_inner", None)
+        close_fn = getattr(sql_runner, "close", None)
+        if callable(close_fn):
+            close_fn()
+
+
 @click.command(
     epilog=format_epilog(
         """
@@ -98,6 +125,16 @@ def doctor(project_dir, output_format, output_path):  # noqa: C901
     elif settings.database.mode == "spark":
         db_ok = bool(settings.database.spark_remote)
         db_detail = settings.database.spark_remote
+    elif settings.database.mode == "redash":
+        db_ok = bool(
+            settings.database.redash_base_url.strip()
+            and settings.database.redash_api_key.strip()
+            and settings.database.redash_data_source_id > 0
+        )
+        db_detail = (
+            f"{settings.database.redash_base_url.rstrip('/')}"
+            f" (data_source_id={settings.database.redash_data_source_id})"
+        )
     add_check("Database config", db_ok, db_detail or settings.database.mode)
 
     for name in ("schema_description.md", "queries.yaml"):
@@ -116,7 +153,7 @@ def doctor(project_dir, output_format, output_path):  # noqa: C901
 
     try:
         sql_runner = create_sql_runner_from_settings(settings.database, str(project_path))
-        asyncio.run(sql_runner.run_sql("SELECT 1 AS ok"))
+        asyncio.run(_async_probe_select_one_and_close(sql_runner))
         add_check("Database connectivity", True, "SELECT 1")
     except Exception as exc:
         add_check("Database connectivity", False, str(exc))

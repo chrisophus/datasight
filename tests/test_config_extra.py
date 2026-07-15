@@ -16,6 +16,7 @@ from datasight.config import (
     normalize_db_mode,
 )
 from datasight.exceptions import ConfigurationError, ConnectionError as DsConnectionError
+from datasight.redash_runner import RedashRunner
 from datasight.runner import DuckDBRunner, SQLiteRunner
 from datasight.settings import DatabaseSettings
 
@@ -72,6 +73,45 @@ def test_create_sql_runner_invalid_mode():
 def test_create_sql_runner_local_alias_still_requires_path():
     with pytest.raises(ConfigurationError, match="DB_PATH is required"):
         create_sql_runner("local", db_path="")
+
+
+def test_create_sql_runner_redash_branch():
+    runner = create_sql_runner(
+        "redash",
+        redash_base_url="https://redash.example.com",
+        redash_api_key="secret",
+        redash_data_source_id=3,
+    )
+    assert isinstance(runner, RedashRunner)
+    runner.close()
+
+
+def test_create_sql_runner_redash_missing_base_url():
+    with pytest.raises(ConfigurationError, match="REDASH_BASE_URL"):
+        create_sql_runner(
+            "redash",
+            redash_api_key="x",
+            redash_data_source_id=1,
+        )
+
+
+def test_create_sql_runner_redash_missing_api_key():
+    with pytest.raises(ConfigurationError, match="REDASH_API_KEY"):
+        create_sql_runner(
+            "redash",
+            redash_base_url="https://redash.example.com",
+            redash_data_source_id=1,
+        )
+
+
+def test_create_sql_runner_redash_invalid_data_source_id():
+    with pytest.raises(ConfigurationError, match="REDASH_DATA_SOURCE_ID"):
+        create_sql_runner(
+            "redash",
+            redash_base_url="https://redash.example.com",
+            redash_api_key="k",
+            redash_data_source_id=0,
+        )
 
 
 def test_create_sql_runner_duckdb_with_path(test_duckdb_path):

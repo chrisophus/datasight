@@ -61,6 +61,18 @@ conn = sqlite3.connect(DB_PATH)
 def run_sql(sql: str) -> pd.DataFrame:
     return pd.read_sql_query(sql, conn)
 {{/is_sqlite}}
+{{#is_redash}}
+# Database mode: redash — queries executed via the Redash HTTP API during the session.
+# This export cannot embed REDASH_API_KEY or REDASH_DATA_SOURCE_ID. To replay, either
+# implement POST /api/query_results + job polling with httpx, or set DB_MODE to your
+# warehouse (e.g. postgres) and connect directly.
+
+
+def run_sql(sql: str) -> pd.DataFrame:
+    raise NotImplementedError(
+        "Wire Redash (or the backing warehouse) — exported scripts do not include API secrets."
+    )
+{{/is_redash}}
 {{#is_unknown_mode}}
 # Database mode: {{{db_mode}}}
 # This session ran against a non-file backend. Replace the run_sql body

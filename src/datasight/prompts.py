@@ -99,6 +99,13 @@ _DIALECT_HINTS: dict[str, str] = {
         "Postgres regression: regr_slope(y, x), regr_intercept(y, x), "
         "regr_r2(y, x), corr(y, x).\n"
     ),
+    "mysql": (
+        "Use MySQL SQL syntax.\n"
+        "MySQL dates: DATE_FORMAT(), YEAR(), MONTH(), STR_TO_DATE(), CURDATE(). "
+        "Use backticks for identifiers when needed. LIKE (not ILIKE) for patterns.\n"
+        "Aggregates and GROUP BY behave as in standard MySQL — "
+        "no FILTER clause; use conditional SUM/CASE patterns.\n"
+    ),
     "sqlite": (
         "Use SQLite SQL syntax.\n"
         "SQLite dates: strftime(), date(), datetime(). "
@@ -128,11 +135,27 @@ _DIALECT_HINTS: dict[str, str] = {
         "will see a 'truncated' warning — the cure is more aggregation, not "
         "a larger LIMIT.\n"
     ),
+    "bigquery": (
+        "Use BigQuery Standard SQL syntax.\n"
+        "Dates: DATE_TRUNC, EXTRACT, FORMAT_TIMESTAMP, TIMESTAMP/DATE literals.\n"
+        "Prefer SAFE_ prefixed casts/parses when handling untyped strings.\n"
+    ),
+    "snowflake": (
+        "Use Snowflake SQL syntax.\n"
+        "Dates: DATE_TRUNC, TO_TIMESTAMP, TO_DATE; casts with ``::TYPE`` optional.\n"
+    ),
 }
 
 
 def dialect_hint(dialect: str) -> str:
-    return _DIALECT_HINTS.get(dialect, _DIALECT_HINTS["duckdb"])
+    hinted = _DIALECT_HINTS.get(dialect)
+    if hinted:
+        return hinted
+    return (
+        f"Use `{dialect}` SQL syntax appropriate for the warehouse behind this "
+        "connection (including Redash-backed engines). Stay within this dialect — "
+        "do not mix functions from other engines.\n"
+    )
 
 
 _BASE_VERIFY_PROMPT = (

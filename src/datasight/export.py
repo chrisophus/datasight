@@ -538,8 +538,9 @@ def export_session_python(
         Default value baked into the script as ``DEFAULT_DB_PATH``. The user
         can override at runtime with ``--db``.
     db_mode:
-        ``"duckdb"`` (default), ``"sqlite"``, or another value (renders a
-        scaffold whose ``run_sql`` raises NotImplementedError).
+        ``"duckdb"`` (default), ``"sqlite"``, ``"redash"``, or another value
+        (non-file backends render a scaffold whose ``run_sql`` raises
+        ``NotImplementedError`` unless documented otherwise).
     exclude_indices:
         Optional set of 0-based turn indices to skip — same semantics as
         ``export_session_html``.
@@ -559,7 +560,8 @@ def export_session_python(
             "db_mode": db_mode,
             "is_duckdb": db_mode == "duckdb",
             "is_sqlite": db_mode == "sqlite",
-            "is_unknown_mode": db_mode not in ("duckdb", "sqlite"),
+            "is_redash": db_mode == "redash",
+            "is_unknown_mode": db_mode not in ("duckdb", "sqlite", "redash"),
             "turns": [c for c in contexts if c is not None],
         },
     )

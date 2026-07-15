@@ -277,6 +277,11 @@ def sql_error_hint(error_msg: str, dialect: str = "duckdb") -> str:
                 hints.append(
                     "HINT: PostgreSQL syntax — use DATE_TRUNC, EXTRACT, TO_CHAR, col::type."
                 )
+            case "mysql":
+                hints.append(
+                    "HINT: MySQL syntax — use DATE_FORMAT, YEAR/MONTH/DAY, STR_TO_DATE; "
+                    "backticks for reserved names."
+                )
             case "sqlite":
                 hints.append(
                     "HINT: SQLite syntax — use strftime(), date(), datetime(). "

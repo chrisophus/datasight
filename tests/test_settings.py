@@ -165,7 +165,7 @@ class TestSettingsFromEnv:
 
         assert "Invalid DB_MODE" in str(exc_info.value)
         assert "postgress" in str(exc_info.value)
-        assert "duckdb, sqlite, postgres, flightsql" in str(exc_info.value)
+        assert "duckdb, sqlite, postgres, flightsql, spark, redash" in str(exc_info.value)
 
     def test_local_alias_for_duckdb(self, monkeypatch):
         """'local' should be accepted as alias for 'duckdb'."""
@@ -175,6 +175,35 @@ class TestSettingsFromEnv:
         settings = Settings.from_env()
 
         assert settings.database.mode == "duckdb"
+
+    def test_db_mode_redash_from_env(self, monkeypatch):
+        monkeypatch.setenv("DB_MODE", "redash")
+        monkeypatch.setenv("REDASH_BASE_URL", "https://r.example.com/")
+        monkeypatch.setenv("REDASH_API_KEY", "rk")
+        monkeypatch.setenv("REDASH_DATA_SOURCE_ID", "12")
+        monkeypatch.setenv("REDASH_SQL_DIALECT", "snowflake")
+
+        settings = Settings.from_env()
+
+        assert settings.database.mode == "redash"
+        assert settings.database.redash_data_source_id == 12
+        assert settings.database.sql_dialect == "snowflake"
+
+    def test_redash_validate_requires_credentials(self, monkeypatch):
+        monkeypatch.setenv("DB_MODE", "redash")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+
+        errs = Settings.from_env().validate()
+        assert any("REDASH_BASE_URL" in e for e in errs)
+
+    def test_redash_validate_ok_when_configured(self, monkeypatch):
+        monkeypatch.setenv("DB_MODE", "redash")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+        monkeypatch.setenv("REDASH_BASE_URL", "https://r.example.com")
+        monkeypatch.setenv("REDASH_API_KEY", "rk")
+        monkeypatch.setenv("REDASH_DATA_SOURCE_ID", "3")
+
+        assert Settings.from_env().validate() == []
 
     def test_safe_int_for_ports(self, monkeypatch):
         """Invalid port values should use defaults instead of crashing."""

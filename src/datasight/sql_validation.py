@@ -166,6 +166,10 @@ def validate_sql(  # noqa: C901
         "duckdb": "duckdb",
         "postgres": "postgres",
         "sqlite": "sqlite",
+        "mysql": "mysql",
+        "spark": "spark",
+        "bigquery": "bigquery",
+        "snowflake": "snowflake",
     }
     sqlglot_dialect = _SQLGLOT_DIALECTS.get(dialect, "duckdb")
 
